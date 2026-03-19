@@ -448,7 +448,8 @@ async function loadAdminOrders() {
                     <td><span class="order-status ${o.status}">${o.status}</span></td>
                     <td style="color:var(--text-muted); font-size:0.85rem;">${date}</td>
                     <td>
-                        <div style="display:flex; gap:var(--space-sm);">
+                        <div style="display:flex; gap:var(--space-sm); align-items:center;">
+                            <a href="/invoice/${o.id}/" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;" title="Print Invoice">🖨️</a>
                             <button class="btn btn-ghost btn-sm" onclick="openOrderStatusModal(${o.id}, '${o.status}')">Update</button>
                             <button class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="deleteOrder(${o.id}, '${o.order_number}')">Delete</button>
                         </div>

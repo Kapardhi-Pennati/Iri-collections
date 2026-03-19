@@ -56,9 +56,12 @@ async function loadOrders() {
                         <span class="order-status ${order.status}">${order.status}</span>
                     </div>
                     ${itemsList}
-                    <div style="display:flex; justify-content:space-between; margin-top:var(--space-md); padding-top:var(--space-md); border-top:1px solid var(--border); font-weight:700;">
-                        <span>Total</span>
-                        <span style="color:var(--gold-light);">${formatPrice(order.total_amount)}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:var(--space-md); padding-top:var(--space-md); border-top:1px solid var(--border); font-weight:700;">
+                        <div>
+                            <span>Total:</span>
+                            <span style="color:var(--gold-light); margin-left:10px;">${formatPrice(order.total_amount)}</span>
+                        </div>
+                        <a href="/invoice/${order.id}/" target="_blank" class="btn btn-sm btn-ghost" style="text-decoration:none;">🖨️ Print Bill</a>
                     </div>
                     ${order.transaction ? `
                     <div style="margin-top:var(--space-sm); font-size:0.8rem; color:var(--text-muted);">
