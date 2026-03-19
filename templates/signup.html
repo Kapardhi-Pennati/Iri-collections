@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Account — Iri Collections{% endblock %}
+{% block meta_description %}Join Iri Collections — create your account and discover exquisite jewelry.{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-card card-glass">
+        <h1>Join <span class="text-gold">Iri</span></h1>
+        <p class="subtitle">Create your account to start shopping</p>
+
+        <form id="signup-form">
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" placeholder="Your full name" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" placeholder="+91 9876543210">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Min. 8 characters" required minlength="8">
+            </div>
+            <div class="form-group">
+                <label for="password2">Confirm Password</label>
+                <input type="password" id="password2" placeholder="Repeat password" required>
+            </div>
+            <div id="signup-error" class="form-error" style="display:none; margin-bottom:1rem;"></div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="signup-btn">Create Account</button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account? <a href="/login/">Sign in</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('signup-btn');
+    const errEl = document.getElementById('signup-error');
+    btn.disabled = true;
+    btn.textContent = 'Creating account...';
+    errEl.style.display = 'none';
+
+    const data = {
+        full_name: document.getElementById('full_name').value,
+        email: document.getElementById('email').value,
+        username: document.getElementById('email').value.split('@')[0],
+        phone: document.getElementById('phone').value,
+        password: document.getElementById('password').value,
+        password2: document.getElementById('password2').value,
+    };
+
+    if (data.password !== data.password2) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+    }
+
+    const res = await API.post('/auth/register/', data);
+
+    if (res && res.ok) {
+        API.setTokens(res.data.tokens);
+        API.setUser(res.data.user);
+        Toast.success('Account created successfully!');
+        setTimeout(() => window.location.href = '/', 500);
+    } else {
+        const errors = res?.data;
+        let msg = 'Registration failed. ';
+        if (errors) {
+            for (const [key, val] of Object.entries(errors)) {
+                if (Array.isArray(val)) msg += val.join(' ');
+                else if (typeof val === 'string') msg += val;
+            }
+        }
+        errEl.textContent = msg;
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+    }
+});
+</script>
+{% endblock %}

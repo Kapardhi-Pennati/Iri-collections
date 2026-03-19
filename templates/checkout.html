@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Checkout — Iri Collections{% endblock %}
+
+{% block extra_head %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h1 style="font-family: var(--font-display); font-size: 2.2rem;">Secure <span class="text-gold">Checkout</span></h1>
+            <div class="section-divider"></div>
+        </div>
+
+        <!-- Checkout Steps Indicator -->
+        <div class="checkout-steps">
+            <div class="checkout-step active" id="step-indicator-1">
+                <div class="checkout-step-number">1</div>
+                <div class="checkout-step-label">Shipping</div>
+            </div>
+            <div class="checkout-step" id="step-indicator-2">
+                <div class="checkout-step-number">2</div>
+                <div class="checkout-step-label">Review</div>
+            </div>
+            <div class="checkout-step" id="step-indicator-3">
+                <div class="checkout-step-number">3</div>
+                <div class="checkout-step-label">Payment</div>
+            </div>
+        </div>
+
+        <div class="checkout-panel" id="checkout-content">
+            <!-- Step 1: Shipping -->
+            <div id="step-1" class="card-glass">
+                <h2 style="font-family:var(--font-display); margin-bottom:var(--space-lg);">Shipping Details</h2>
+                <form id="shipping-form">
+                    <div class="form-group">
+                        <label for="ship-name">Full Name</label>
+                        <input type="text" id="ship-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ship-phone">Phone Number</label>
+                        <input type="tel" id="ship-phone" required placeholder="+91 9876543210">
+                    </div>
+                    <div class="form-group">
+                        <label for="ship-address">Complete Address</label>
+                        <textarea id="ship-address" rows="3" required placeholder="House/Flat No., Street, Landmark"></textarea>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+                        <div class="form-group">
+                            <label for="ship-city">City</label>
+                            <input type="text" id="ship-city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ship-pincode">Pincode</label>
+                            <input type="text" id="ship-pincode" required maxlength="6" pattern="[0-9]{6}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="ship-notes">Order Notes <span style="color:var(--text-muted); text-transform:none;">(optional)</span></label>
+                        <textarea id="ship-notes" rows="2" placeholder="Any special instructions..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block btn-lg">Continue to Review →</button>
+                </form>
+            </div>
+
+            <!-- Step 2: Review (hidden initially) -->
+            <div id="step-2" class="card-glass hidden">
+                <h2 style="font-family:var(--font-display); margin-bottom:var(--space-lg);">Review Your Order</h2>
+                <div id="review-items"></div>
+                <div id="review-shipping" style="margin-top:var(--space-lg); padding:var(--space-lg); background:var(--bg-elevated); border-radius:var(--radius-md);"></div>
+                <div id="review-total" style="margin-top:var(--space-lg);"></div>
+                <div style="display:flex; gap:var(--space-md); margin-top:var(--space-xl);">
+                    <button class="btn btn-ghost btn-lg" onclick="goToStep(1)">← Back</button>
+                    <button class="btn btn-primary btn-lg" style="flex:1;" onclick="proceedToPayment()">Pay Now 🔒</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Payment Confirmation (hidden initially) -->
+            <div id="step-3" class="card-glass hidden text-center">
+                <div style="font-size:4rem; margin-bottom:var(--space-lg);">🎉</div>
+                <h2 style="font-family:var(--font-display); margin-bottom:var(--space-sm);">Order Confirmed!</h2>
+                <p class="text-muted mb-2" id="confirmation-msg">Your order has been placed successfully.</p>
+                <div id="confirmation-details" style="text-align:left; background:var(--bg-elevated); border-radius:var(--radius-md); padding:var(--space-lg); margin-bottom:var(--space-xl);"></div>
+                <div style="display:flex; gap:var(--space-md); justify-content:center;">
+                    <a href="/orders/" class="btn btn-primary btn-lg">View My Orders</a>
+                    <a href="/catalog/" class="btn btn-secondary btn-lg">Continue Shopping</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cartData = null;
+let currentStep = 1;
+let createdOrder = null;
+
+async function loadCheckoutCart() {
+    if (!API.isLoggedIn()) {
+        window.location.href = '/login/';
+        return;
+    }
+    cartData = await API.get('/store/cart/');
+    if (!cartData || !cartData.items || cartData.items.length === 0) {
+        document.getElementById('checkout-content').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🛒</div>
+                <h3>Your cart is empty</h3>
+                <a href="/catalog/" class="btn btn-primary mt-2">Browse Products</a>
+            </div>`;
+        return;
+    }
+    // Pre-fill user info
+    const user = API.getUser();
+    if (user) {
+        document.getElementById('ship-name').value = user.full_name || '';
+        document.getElementById('ship-phone').value = user.phone || '';
+    }
+}
+
+function goToStep(step) {
+    currentStep = step;
+    for (let i = 1; i <= 3; i++) {
+        document.getElementById(`step-${i}`).classList.toggle('hidden', i !== step);
+        const ind = document.getElementById(`step-indicator-${i}`);
+        ind.classList.remove('active', 'completed');
+        if (i < step) ind.classList.add('completed');
+        if (i === step) ind.classList.add('active');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Step 1 → Step 2: Review
+document.getElementById('shipping-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    // Render review
+    const items = cartData.items.map(item => {
+        const p = item.product_detail;
+        return `<div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--border);">
+            <div>
+                <div style="font-weight:600;">${p.name}</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">Qty: ${item.quantity} × ${formatPrice(p.price)}</div>
+            </div>
+            <div style="font-weight:600; color:var(--gold-light);">${formatPrice(item.subtotal)}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('review-items').innerHTML = items;
+
+    const addr = `${document.getElementById('ship-name').value}<br>
+        ${document.getElementById('ship-address').value}<br>
+        ${document.getElementById('ship-city').value} - ${document.getElementById('ship-pincode').value}<br>
+        📞 ${document.getElementById('ship-phone').value}`;
+    document.getElementById('review-shipping').innerHTML = `
+        <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:0.5rem;">Shipping To</div>
+        <div style="line-height:1.8;">${addr}</div>`;
+
+    const shipping = cartData.total >= 5000 ? 0 : 199;
+    const total = cartData.total + shipping;
+    document.getElementById('review-total').innerHTML = `
+        <div class="cart-summary-row"><span>Subtotal</span><span>${formatPrice(cartData.total)}</span></div>
+        <div class="cart-summary-row"><span>Shipping</span><span style="color:var(--success);">${shipping === 0 ? 'Free' : formatPrice(shipping)}</span></div>
+        <div class="cart-summary-row total"><span>Total</span><span>${formatPrice(total)}</span></div>`;
+
+    goToStep(2);
+});
+
+// Step 2 → Payment
+async function proceedToPayment() {
+    const address = `${document.getElementById('ship-name').value}, ${document.getElementById('ship-address').value}, ${document.getElementById('ship-city').value} - ${document.getElementById('ship-pincode').value}`;
+    const phone = document.getElementById('ship-phone').value;
+    const notes = document.getElementById('ship-notes').value;
+
+    // Create order
+    const orderRes = await API.post('/store/orders/create/', {
+        shipping_address: address,
+        phone: phone,
+        notes: notes,
+    });
+
+    if (!orderRes || !orderRes.ok) {
+        Toast.error(orderRes?.data?.error || 'Failed to create order.');
+        return;
+    }
+
+    createdOrder = orderRes.data;
+
+    // Create Razorpay payment
+    const paymentRes = await API.post('/payments/create/', { order_id: createdOrder.id });
+    if (!paymentRes || !paymentRes.ok) {
+        // If payment gateway fails, still show order as pending
+        Toast.info('Order created! Payment can be completed later.');
+        showConfirmation(createdOrder, 'pending');
+        return;
+    }
+
+    const paymentData = paymentRes.data;
+    const user = API.getUser();
+
+    // Open Razorpay Checkout
+    const options = {
+        key: paymentData.razorpay_key_id,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        name: 'Iri Collections',
+        description: `Order ${paymentData.order_number}`,
+        order_id: paymentData.razorpay_order_id,
+        prefill: {
+            name: user?.full_name || '',
+            email: user?.email || '',
+            contact: phone,
+        },
+        theme: {
+            color: '#c9a84c',
+        },
+        handler: async function(response) {
+            // Verify payment
+            const verifyRes = await API.post('/payments/verify/', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+            });
+            if (verifyRes && verifyRes.ok) {
+                Toast.success('Payment successful!');
+                showConfirmation(createdOrder, 'confirmed');
+            } else {
+                Toast.error('Payment verification failed. Contact support.');
+                showConfirmation(createdOrder, 'pending');
+            }
+        },
+        modal: {
+            ondismiss: function() {
+                Toast.info('Payment cancelled. Order saved as pending.');
+                showConfirmation(createdOrder, 'pending');
+            }
+        }
+    };
+
+    try {
+        const razorpayInstance = new Razorpay(options);
+        razorpayInstance.open();
+    } catch (err) {
+        console.error('Razorpay error:', err);
+        Toast.info('Payment gateway unavailable. Order saved as pending.');
+        showConfirmation(createdOrder, 'pending');
+    }
+}
+
+function showConfirmation(order, paymentStatus) {
+    updateCartCount();
+    document.getElementById('confirmation-msg').textContent =
+        paymentStatus === 'confirmed'
+            ? 'Your payment has been confirmed. Thank you for your purchase!'
+            : 'Your order has been placed. Complete payment to confirm.';
+
+    document.getElementById('confirmation-details').innerHTML = `
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+            <div><div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Order Number</div>
+                <div style="font-weight:700; color:var(--gold-light); font-size:1.1rem;">${order.order_number}</div></div>
+            <div><div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Total Amount</div>
+                <div style="font-weight:700; font-size:1.1rem;">${formatPrice(order.total_amount)}</div></div>
+            <div><div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Status</div>
+                <div><span class="order-status ${paymentStatus}">${paymentStatus}</span></div></div>
+            <div><div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Date</div>
+                <div>${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
+        </div>`;
+
+    goToStep(3);
+}
+
+document.addEventListener('DOMContentLoaded', loadCheckoutCart);
+</script>
+{% endblock %}

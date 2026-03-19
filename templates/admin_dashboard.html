@@ -1,0 +1,583 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Dashboard — Iri Collections{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+        <div style="font-family:var(--font-display); font-size:1.1rem; color:var(--gold); margin-bottom:var(--space-2xl);">Admin Panel</div>
+        <ul class="admin-sidebar-nav">
+            <li><a href="#" onclick="showSection('overview')" class="active" id="nav-overview">📊 Overview</a></li>
+            <li><a href="#" onclick="showSection('products')" id="nav-products">📦 Products</a></li>
+            <li><a href="#" onclick="showSection('orders')" id="nav-orders">🛒 Orders</a></li>
+            <li><a href="#" onclick="showSection('categories')" id="nav-categories">🏷️ Categories</a></li>
+        </ul>
+        <div style="margin-top:auto; padding-top:var(--space-2xl); border-top:1px solid var(--border);">
+            <a href="/" style="color:var(--text-muted); font-size:0.85rem;">← Back to Store</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <!-- Section: Overview -->
+        <div id="section-overview">
+            <h2 style="font-family:var(--font-display); margin-bottom:var(--space-xl);">Dashboard <span class="text-gold">Overview</span></h2>
+            <div class="stat-cards" id="stat-cards">
+                <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Total Revenue</div><div class="stat-value" id="stat-revenue">—</div></div>
+                <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">Total Orders</div><div class="stat-value" id="stat-orders">—</div></div>
+                <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Pending Orders</div><div class="stat-value" id="stat-pending">—</div></div>
+                <div class="stat-card"><div class="stat-icon">💎</div><div class="stat-label">Active Products</div><div class="stat-value" id="stat-products">—</div></div>
+                <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-label">Low Stock</div><div class="stat-value" id="stat-lowstock">—</div></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:2fr 1fr; gap:var(--space-xl);">
+                <div class="chart-container">
+                    <h3>Revenue (Last 30 Days)</h3>
+                    <canvas id="revenue-chart" height="240"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Orders by Status</h3>
+                    <canvas id="status-chart" height="240"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>Top Selling Products</h3>
+                <div id="top-products-list"></div>
+            </div>
+        </div>
+
+        <!-- Section: Products -->
+        <div id="section-products" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-xl);">
+                <h2 style="font-family:var(--font-display);">Manage <span class="text-gold">Products</span></h2>
+                <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="admin-table" id="products-table">
+                    <thead>
+                        <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="products-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section: Orders -->
+        <div id="section-orders" class="hidden">
+            <h2 style="font-family:var(--font-display); margin-bottom:var(--space-xl);">Manage <span class="text-gold">Orders</span></h2>
+            <div style="overflow-x:auto;">
+                <table class="admin-table" id="orders-table">
+                    <thead>
+                        <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="orders-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section: Categories -->
+        <div id="section-categories" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-xl);">
+                <h2 style="font-family:var(--font-display);">Manage <span class="text-gold">Categories</span></h2>
+                <button class="btn btn-primary" onclick="openCategoryModal()">+ Add Category</button>
+            </div>
+            <div id="categories-list"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Product Modal -->
+<div class="modal-overlay" id="product-modal">
+    <div class="modal">
+        <h2 id="product-modal-title">Add Product</h2>
+        <form id="product-form">
+            <input type="hidden" id="product-edit-id">
+            <div class="form-group"><label>Name</label><input type="text" id="pf-name" required></div>
+            <div class="form-group"><label>Description</label><textarea id="pf-desc" rows="3" required></textarea></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+                <div class="form-group"><label>Price (₹)</label><input type="number" id="pf-price" step="0.01" required></div>
+                <div class="form-group"><label>Compare Price (₹)</label><input type="number" id="pf-compare" step="0.01"></div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+                <div class="form-group"><label>Stock</label><input type="number" id="pf-stock" required></div>
+                <div class="form-group"><label>Category</label><select id="pf-category" required></select></div>
+            </div>
+            <div class="form-group"><label>Image URL</label><input type="url" id="pf-image" placeholder="https://..."></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+                <div class="form-group"><label>Material</label><input type="text" id="pf-material"></div>
+                <div class="form-group"><label>Weight</label><input type="text" id="pf-weight" placeholder="e.g. 5.2g"></div>
+            </div>
+            <div style="display:flex; gap:var(--space-md);">
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem;">
+                    <input type="checkbox" id="pf-active" checked> Active
+                </label>
+                <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem;">
+                    <input type="checkbox" id="pf-featured"> Featured
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('product-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="product-submit-btn">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay" id="category-modal">
+    <div class="modal">
+        <h2 id="category-modal-title">Add Category</h2>
+        <form id="category-form">
+            <input type="hidden" id="cat-edit-id">
+            <div class="form-group"><label>Name</label><input type="text" id="cf-name" required></div>
+            <div class="form-group"><label>Description</label><textarea id="cf-desc" rows="2"></textarea></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('category-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Category</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Order Status Modal -->
+<div class="modal-overlay" id="order-modal">
+    <div class="modal">
+        <h2>Update Order Status</h2>
+        <input type="hidden" id="order-edit-id">
+        <div class="form-group">
+            <label>New Status</label>
+            <select id="order-status-select">
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal('order-modal')">Cancel</button>
+            <button class="btn btn-primary" onclick="updateOrderStatus()">Update Status</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let revenueChart = null;
+let statusChart = null;
+let allCategories = [];
+
+// ─── Auth guard ─────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    if (!API.isLoggedIn() || !API.isAdmin()) {
+        Toast.error('Access denied. Admin only.');
+        setTimeout(() => window.location.href = '/', 1000);
+        return;
+    }
+    loadOverview();
+    loadAdminProducts();
+    loadAdminOrders();
+    loadAdminCategories();
+});
+
+// ─── Section navigation ────────────────────────
+function showSection(name) {
+    ['overview', 'products', 'orders', 'categories'].forEach(s => {
+        document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
+        document.getElementById(`nav-${s}`).classList.toggle('active', s === name);
+    });
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+}
+
+// ─── Overview / Analytics ──────────────────────
+async function loadOverview() {
+    try {
+        const data = await API.get('/store/admin/analytics/');
+        if (!data) return;
+
+        document.getElementById('stat-revenue').textContent = formatPrice(data.total_revenue);
+        document.getElementById('stat-orders').textContent = data.total_orders;
+        document.getElementById('stat-pending').textContent = data.pending_orders;
+        document.getElementById('stat-products').textContent = data.total_products;
+        document.getElementById('stat-lowstock').textContent = data.low_stock_products;
+
+        // Revenue chart
+        const ctx1 = document.getElementById('revenue-chart').getContext('2d');
+        const labels = data.daily_revenue.map(d => {
+            const dt = new Date(d.date);
+            return dt.toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+        });
+        const revenues = data.daily_revenue.map(d => parseFloat(d.revenue));
+
+        if (revenueChart) revenueChart.destroy();
+        revenueChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels.length ? labels : ['No data'],
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: revenues.length ? revenues : [0],
+                    borderColor: '#c9a84c',
+                    backgroundColor: 'rgba(201, 168, 76, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#c9a84c',
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6660' } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6b6660', callback: v => '₹' + v.toLocaleString() } }
+                }
+            }
+        });
+
+        // Status chart
+        const ctx2 = document.getElementById('status-chart').getContext('2d');
+        const statusLabels = data.status_breakdown.map(s => s.status);
+        const statusCounts = data.status_breakdown.map(s => s.count);
+        const statusColors = { pending: '#fbbf24', confirmed: '#60a5fa', shipped: '#c9a84c', delivered: '#4ade80', cancelled: '#f87171' };
+
+        if (statusChart) statusChart.destroy();
+        statusChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: statusLabels.length ? statusLabels : ['No orders'],
+                datasets: [{
+                    data: statusCounts.length ? statusCounts : [1],
+                    backgroundColor: statusLabels.length ? statusLabels.map(s => statusColors[s] || '#6b6660') : ['#1c1c28'],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#a09b8f', padding: 15, font: { size: 12 } } }
+                },
+                cutout: '65%',
+            }
+        });
+
+        // Top products
+        const topList = document.getElementById('top-products-list');
+        if (data.top_products.length > 0) {
+            topList.innerHTML = data.top_products.map((p, i) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 0; ${i < data.top_products.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
+                    <div style="display:flex; align-items:center; gap:var(--space-md);">
+                        <span style="color:var(--gold); font-weight:700; width:24px;">#${i+1}</span>
+                        <span>${escapeHTML(p.product_name)}</span>
+                    </div>
+                    <div style="display:flex; gap:var(--space-xl); color:var(--text-secondary); font-size:0.9rem;">
+                        <span>${p.total_sold} sold</span>
+                        <span style="color:var(--gold-light); font-weight:600;">${formatPrice(p.total_revenue)}</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            topList.innerHTML = '<p class="text-muted">No sales data yet</p>';
+        }
+    } catch (err) {
+        console.error('Analytics error:', err);
+    }
+}
+
+// ─── Products CRUD ─────────────────────────────
+async function loadAdminProducts() {
+    try {
+        const data = await API.get('/store/admin/products/');
+        if (!data) return;
+        const products = data.results || data;
+        const tbody = document.getElementById('products-tbody');
+        tbody.innerHTML = products.map(p => `
+            <tr>
+                <td>
+                    <div style="display:flex; align-items:center; gap:var(--space-md);">
+                        <img src="${p.display_image || p.image_url || ''}" alt="" style="width:40px; height:40px; border-radius:var(--radius-sm); object-fit:cover; background:var(--bg-elevated);">
+                        <div>
+                            <div style="font-weight:600;">${escapeHTML(p.name)}</div>
+                            <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHTML(p.material || '')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${escapeHTML(p.category_name || '')}</td>
+                <td style="color:var(--gold-light); font-weight:600;">${formatPrice(p.price)}</td>
+                <td><span class="stock-badge ${p.stock === 0 ? 'out-of-stock' : p.stock <= 5 ? 'low-stock' : 'in-stock'}" style="font-size:0.8rem;">${p.stock}</span></td>
+                <td>${p.is_active ? '<span style="color:var(--success);">Active</span>' : '<span style="color:var(--text-muted);">Inactive</span>'}</td>
+                <td>
+                    <div style="display:flex; gap:var(--space-sm);">
+                        <button class="btn btn-ghost btn-sm" onclick="editProduct(${p.id})">Edit</button>
+                        <button class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="deleteProduct(${p.id}, '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadCategoryOptions() {
+    try {
+        const cats = await API.get('/store/categories/');
+        allCategories = cats || [];
+        const sel = document.getElementById('pf-category');
+        sel.innerHTML = allCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    } catch {}
+}
+
+function openProductModal(product = null) {
+    loadCategoryOptions();
+    const form = document.getElementById('product-form');
+    form.reset();
+    document.getElementById('product-edit-id').value = '';
+
+    if (product) {
+        document.getElementById('product-modal-title').textContent = 'Edit Product';
+        document.getElementById('product-edit-id').value = product.id;
+        document.getElementById('pf-name').value = product.name;
+        document.getElementById('pf-desc').value = product.description;
+        document.getElementById('pf-price').value = product.price;
+        document.getElementById('pf-compare').value = product.compare_price || '';
+        document.getElementById('pf-stock').value = product.stock;
+        document.getElementById('pf-image').value = product.image_url || '';
+        document.getElementById('pf-material').value = product.material || '';
+        document.getElementById('pf-weight').value = product.weight || '';
+        document.getElementById('pf-active').checked = product.is_active;
+        document.getElementById('pf-featured').checked = product.is_featured;
+        setTimeout(() => {
+            document.getElementById('pf-category').value = product.category;
+        }, 200);
+    } else {
+        document.getElementById('product-modal-title').textContent = 'Add Product';
+    }
+    openModal('product-modal');
+}
+
+document.getElementById('product-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('product-edit-id').value;
+    const data = {
+        name: document.getElementById('pf-name').value,
+        description: document.getElementById('pf-desc').value,
+        price: document.getElementById('pf-price').value,
+        compare_price: document.getElementById('pf-compare').value || null,
+        stock: parseInt(document.getElementById('pf-stock').value),
+        category: parseInt(document.getElementById('pf-category').value),
+        image_url: document.getElementById('pf-image').value,
+        material: document.getElementById('pf-material').value,
+        weight: document.getElementById('pf-weight').value,
+        is_active: document.getElementById('pf-active').checked,
+        is_featured: document.getElementById('pf-featured').checked,
+    };
+
+    let res;
+    if (editId) {
+        res = await API.request(`/store/admin/products/${editId}/`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } else {
+        res = await API.request('/store/admin/products/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    if (res && res.ok) {
+        Toast.success(editId ? 'Product updated!' : 'Product created!');
+        closeModal('product-modal');
+        loadAdminProducts();
+    } else {
+        const errData = await res?.json();
+        Toast.error(JSON.stringify(errData) || 'Failed to save product.');
+    }
+});
+
+async function editProduct(id) {
+    const res = await API.get(`/store/admin/products/${id}/`);
+    if (res) openProductModal(res);
+}
+
+async function deleteProduct(id, name) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const res = await API.request(`/store/admin/products/${id}/`, { method: 'DELETE' });
+    if (res && res.ok) {
+        Toast.success('Product deleted');
+        loadAdminProducts();
+    } else {
+        Toast.error('Failed to delete product.');
+    }
+}
+
+// ─── Orders Management ────────────────────────
+async function loadAdminOrders() {
+    try {
+        const data = await API.get('/store/admin/orders/');
+        if (!data) return;
+        const orders = data.results || data;
+        const tbody = document.getElementById('orders-tbody');
+        tbody.innerHTML = orders.map(o => {
+            const date = new Date(o.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+            return `
+                <tr>
+                    <td><span style="font-weight:600; color:var(--gold-light);">${escapeHTML(o.order_number)}</span></td>
+                    <td>${escapeHTML(o.shipping_address?.split(',')[0] || '—')}</td>
+                    <td style="font-weight:600;">${formatPrice(o.total_amount)}</td>
+                    <td><span class="order-status ${o.status}">${o.status}</span></td>
+                    <td style="color:var(--text-muted); font-size:0.85rem;">${date}</td>
+                    <td>
+                        <div style="display:flex; gap:var(--space-sm);">
+                            <button class="btn btn-ghost btn-sm" onclick="openOrderStatusModal(${o.id}, '${o.status}')">Update</button>
+                            <button class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="deleteOrder(${o.id}, '${o.order_number}')">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+        if (orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:2rem;">No orders yet</td></tr>';
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function openOrderStatusModal(orderId, currentStatus) {
+    document.getElementById('order-edit-id').value = orderId;
+    document.getElementById('order-status-select').value = currentStatus;
+    openModal('order-modal');
+}
+
+async function updateOrderStatus() {
+    const orderId = document.getElementById('order-edit-id').value;
+    const newStatus = document.getElementById('order-status-select').value;
+    const res = await API.patch(`/store/admin/orders/${orderId}/status/`, { status: newStatus });
+    if (res && res.ok) {
+        Toast.success(`Order updated to ${newStatus}`);
+        closeModal('order-modal');
+        loadAdminOrders();
+        loadOverview();
+    } else {
+        Toast.error(res?.data?.error || 'Failed to update order.');
+    }
+}
+
+async function deleteOrder(id, orderNumber) {
+    if (!confirm(`Delete order ${orderNumber}? This will remove it permanently.`)) return;
+    const res = await API.request(`/store/admin/orders/${id}/`, { method: 'DELETE' });
+    if (res && res.ok) {
+        Toast.success('Order deleted');
+        loadAdminOrders();
+        loadOverview();
+    } else {
+        Toast.error('Failed to delete order.');
+    }
+}
+
+// ─── Categories Management ─────────────────────
+async function loadAdminCategories() {
+    try {
+        const cats = await API.get('/store/categories/');
+        if (!cats) return;
+        allCategories = cats;
+        const container = document.getElementById('categories-list');
+        container.innerHTML = cats.map(c => `
+            <div class="order-card" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:600; font-size:1.05rem;">${escapeHTML(c.name)}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted);">${c.product_count} products · /${escapeHTML(c.slug)}</div>
+                </div>
+                <div style="display:flex; gap:var(--space-sm);">
+                    <button class="btn btn-ghost btn-sm" onclick="editCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}', '${(c.description || '').replace(/'/g, "\\'")}')">Edit</button>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="deleteCategory(${c.id}, '${c.name.replace(/'/g, "\\'")}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function openCategoryModal(cat = null) {
+    document.getElementById('category-form').reset();
+    document.getElementById('cat-edit-id').value = '';
+    if (cat) {
+        document.getElementById('category-modal-title').textContent = 'Edit Category';
+        document.getElementById('cat-edit-id').value = cat.id;
+        document.getElementById('cf-name').value = cat.name;
+        document.getElementById('cf-desc').value = cat.description || '';
+    } else {
+        document.getElementById('category-modal-title').textContent = 'Add Category';
+    }
+    openModal('category-modal');
+}
+
+function editCategory(id, name, desc) {
+    openCategoryModal({ id, name, description: desc });
+}
+
+document.getElementById('category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('cat-edit-id').value;
+    const data = {
+        name: document.getElementById('cf-name').value,
+        description: document.getElementById('cf-desc').value,
+    };
+
+    let res;
+    if (editId) {
+        res = await API.request(`/store/admin/categories/${editId}/`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } else {
+        res = await API.request('/store/admin/categories/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    if (res && res.ok) {
+        Toast.success(editId ? 'Category updated!' : 'Category created!');
+        closeModal('category-modal');
+        loadAdminCategories();
+    } else {
+        Toast.error('Failed to save category.');
+    }
+});
+
+async function deleteCategory(id, name) {
+    if (!confirm(`Delete category "${name}"? Products in this category may be affected.`)) return;
+    const res = await API.request(`/store/admin/categories/${id}/`, { method: 'DELETE' });
+    if (res && res.ok) {
+        Toast.success('Category deleted');
+        loadAdminCategories();
+    } else {
+        Toast.error('Failed to delete category. Remove associated products first.');
+    }
+}
+</script>
+{% endblock %}

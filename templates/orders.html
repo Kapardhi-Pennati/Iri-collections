@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}My Orders — Iri Collections{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container" style="max-width:900px;">
+        <div class="section-header">
+            <h1 style="font-family: var(--font-display); font-size: 2.2rem;">My <span class="text-gold">Orders</span></h1>
+            <div class="section-divider"></div>
+        </div>
+        <div id="orders-list">
+            <div class="page-loader"><div class="spinner"></div></div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadOrders() {
+    if (!API.isLoggedIn()) {
+        window.location.href = '/login/';
+        return;
+    }
+    try {
+        const data = await API.get('/store/orders/');
+        const container = document.getElementById('orders-list');
+        if (!data || !data.results || data.results.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📦</div>
+                    <h3>No orders yet</h3>
+                    <p>Start shopping to see your orders here</p>
+                    <a href="/catalog/" class="btn btn-primary mt-2">Browse Products</a>
+                </div>`;
+            return;
+        }
+        container.innerHTML = data.results.map(order => {
+            const itemsList = order.items.map(i =>
+                `<div style="display:flex; justify-content:space-between; padding:0.4rem 0; font-size:0.9rem;">
+                    <span>${escapeHTML(i.product_name)} × ${i.quantity}</span>
+                    <span>${formatPrice(i.subtotal)}</span>
+                </div>`
+            ).join('');
+
+            const date = new Date(order.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+
+            return `
+                <div class="order-card fade-in">
+                    <div class="order-header">
+                        <div>
+                            <div class="order-number">${escapeHTML(order.order_number)}</div>
+                            <div style="font-size:0.85rem; color:var(--text-muted);">${date}</div>
+                        </div>
+                        <span class="order-status ${order.status}">${order.status}</span>
+                    </div>
+                    ${itemsList}
+                    <div style="display:flex; justify-content:space-between; margin-top:var(--space-md); padding-top:var(--space-md); border-top:1px solid var(--border); font-weight:700;">
+                        <span>Total</span>
+                        <span style="color:var(--gold-light);">${formatPrice(order.total_amount)}</span>
+                    </div>
+                    ${order.transaction ? `
+                    <div style="margin-top:var(--space-sm); font-size:0.8rem; color:var(--text-muted);">
+                        Payment: <span class="order-status ${order.transaction.status}">${order.transaction.status}</span>
+                    </div>` : ''}
+                </div>`;
+        }).join('');
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadOrders);
+</script>
+{% endblock %}

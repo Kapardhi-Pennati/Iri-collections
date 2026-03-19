@@ -1,0 +1,111 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="{% block meta_description %}Iri Collections — Exquisite handcrafted jewelry. Discover necklaces, earrings, rings, bracelets & more.{% endblock %}">
+    <title>{% block title %}Iri Collections{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">Iri <span>Collections</span></a>
+
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+            <ul class="nav-links" id="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/catalog/">Shop</a></li>
+
+                <!-- Auth links (shown when logged out) -->
+                <li id="auth-links">
+                    <a href="/login/">Login</a>
+                </li>
+
+                <!-- Admin link -->
+                <li id="admin-link" class="hidden">
+                    <a href="/admin-dashboard/">Dashboard</a>
+                </li>
+
+                <!-- Cart icon -->
+                <li>
+                    <a href="/cart/" class="nav-icon" title="Cart">
+                        🛒 <span class="cart-badge" id="cart-count">0</span>
+                    </a>
+                </li>
+
+                <!-- User menu (shown when logged in) -->
+                <li id="user-menu" class="nav-user-menu hidden">
+                    <a href="#" class="nav-icon">👤 <span class="user-name"></span></a>
+                    <div class="nav-dropdown">
+                        <a href="/orders/">My Orders</a>
+                        <a href="#" onclick="logout(); return false;">Logout</a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    {% block footer %}
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand">Iri Collections</div>
+                    <p>Exquisite jewelry for every occasion. Each piece tells a story of artisanal excellence and
+                        timeless beauty.</p>
+                </div>
+                <div>
+                    <h4>Shop</h4>
+                    <ul class="footer-links">
+                        <li><a href="/catalog/?category=necklaces">Necklaces</a></li>
+                        <li><a href="/catalog/?category=earrings">Earrings</a></li>
+                        <li><a href="/catalog/?category=bracelets">Bracelets</a></li>
+                        <li><a href="/catalog/?category=rings">Rings</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Help</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Shipping Policy</a></li>
+                        <li><a href="#">Returns</a></li>
+                        <li><a href="#">Track Order</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Iri Collections. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <script src="{% static 'js/app.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>
