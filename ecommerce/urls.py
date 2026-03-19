@@ -44,6 +44,10 @@ urlpatterns = [
         TemplateView.as_view(template_name="invoice.html"),
         name="invoice-page",
     ),
+    path("shipping/", TemplateView.as_view(template_name="shipping.html"), name="shipping-page"),
+    path("returns/", TemplateView.as_view(template_name="returns.html"), name="returns-page"),
+    path("contact/", TemplateView.as_view(template_name="contact.html"), name="contact-page"),
+    path("about/", TemplateView.as_view(template_name="about.html"), name="about-page"),
     path(
         "admin-dashboard/",
         TemplateView.as_view(template_name="admin_dashboard.html"),
