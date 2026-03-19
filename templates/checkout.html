@@ -159,7 +159,7 @@ document.getElementById('shipping-form').addEventListener('submit', (e) => {
         <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:0.5rem;">Shipping To</div>
         <div style="line-height:1.8;">${addr}</div>`;
 
-    const shipping = cartData.total >= 5000 ? 0 : 199;
+    const shipping = cartData.total >= 1500 ? 0 : 80;
     const total = cartData.total + shipping;
     document.getElementById('review-total').innerHTML = `
         <div class="cart-summary-row"><span>Subtotal</span><span>${formatPrice(cartData.total)}</span></div>

@@ -6,12 +6,15 @@
 <section class="section">
     <div class="container">
         <div class="section-header">
-            <h1 style="font-family: var(--font-display); font-size: 2.2rem;">Shopping <span class="text-gold">Cart</span></h1>
+            <h1 style="font-family: var(--font-display); font-size: 2.2rem;">Shopping <span
+                    class="text-gold">Cart</span></h1>
             <div class="section-divider"></div>
         </div>
 
         <div id="cart-content">
-            <div class="page-loader"><div class="spinner"></div></div>
+            <div class="page-loader">
+                <div class="spinner"></div>
+            </div>
         </div>
     </div>
 </section>
@@ -19,41 +22,41 @@
 
 {% block extra_js %}
 <script>
-async function loadCart() {
-    if (!API.isLoggedIn()) {
-        document.getElementById('cart-content').innerHTML = `
+    async function loadCart() {
+        if (!API.isLoggedIn()) {
+            document.getElementById('cart-content').innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">🛒</div>
                 <h3>Your cart is waiting</h3>
                 <p>Please <a href="/login/">sign in</a> to view your cart</p>
             </div>`;
-        return;
+            return;
+        }
+
+        try {
+            const cart = await API.get('/store/cart/');
+            renderCart(cart);
+        } catch (err) {
+            console.error(err);
+        }
     }
 
-    try {
-        const cart = await API.get('/store/cart/');
-        renderCart(cart);
-    } catch (err) {
-        console.error(err);
-    }
-}
-
-function renderCart(cart) {
-    if (!cart || !cart.items || cart.items.length === 0) {
-        document.getElementById('cart-content').innerHTML = `
+    function renderCart(cart) {
+        if (!cart || !cart.items || cart.items.length === 0) {
+            document.getElementById('cart-content').innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">🛒</div>
                 <h3>Your cart is empty</h3>
                 <p>Discover our beautiful jewelry collection</p>
                 <a href="/catalog/" class="btn btn-primary mt-2">Start Shopping</a>
             </div>`;
-        return;
-    }
+            return;
+        }
 
-    const itemsHTML = cart.items.map(item => {
-        const p = item.product_detail;
-        const img = p.display_image || p.image_url || p.image || '';
-        return `
+        const itemsHTML = cart.items.map(item => {
+            const p = item.product_detail;
+            const img = p.display_image || p.image_url || p.image || '';
+            return `
             <div class="cart-item fade-in" data-item-id="${item.id}">
                 <div class="cart-item-image">
                     <a href="/product/${p.slug}/"><img src="${img}" alt="${p.name}"></a>
@@ -75,9 +78,9 @@ function renderCart(cart) {
                     <div style="font-weight:700; color:var(--gold-light); font-size:1.1rem;">${formatPrice(item.subtotal)}</div>
                 </div>
             </div>`;
-    }).join('');
+        }).join('');
 
-    document.getElementById('cart-content').innerHTML = `
+        document.getElementById('cart-content').innerHTML = `
         <div class="cart-layout">
             <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-lg);">
@@ -93,50 +96,51 @@ function renderCart(cart) {
                         <span>Subtotal</span>
                         <span>${formatPrice(cart.total)}</span>
                     </div>
+                
                     <div class="cart-summary-row">
                         <span>Shipping</span>
-                        <span style="color:var(--success);">${cart.total >= 5000 ? 'Free' : formatPrice(199)}</span>
+                        <span style="color:var(--success);">${cart.total >= 1500 ? 'Free' : formatPrice(80)}</span>
                     </div>
                     <div class="cart-summary-row total">
                         <span>Total</span>
-                        <span>${formatPrice(cart.total >= 5000 ? cart.total : cart.total + 199)}</span>
+                        <span>${formatPrice(cart.total >= 1500 ? cart.total : cart.total + 80)}</span>
                     </div>
-                    ${cart.total < 5000 ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:var(--space-sm);">Add ${formatPrice(5000 - cart.total)} more for free shipping</p>` : ''}
+                    ${cart.total < 1500 ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:var(--space-sm);">Add ${formatPrice(1500 - cart.total)} more for free shipping</p>` : ''}
                     <a href="/checkout/" class="btn btn-primary btn-block btn-lg mt-2">Proceed to Checkout</a>
                     <a href="/catalog/" class="btn btn-ghost btn-block btn-sm mt-1" style="text-transform:none;">← Continue Shopping</a>
                 </div>
             </div>
         </div>`;
-}
-
-async function updateCartItem(itemId, newQty) {
-    const res = await API.patch('/store/cart/', { item_id: itemId, quantity: newQty });
-    if (res && res.ok) {
-        renderCart(res.data);
-        updateCartCount();
-    } else {
-        Toast.error(res?.data?.error || 'Failed to update');
     }
-}
 
-async function removeCartItem(itemId) {
-    const res = await API.delete(`/store/cart/?item_id=${itemId}`);
-    if (res && res.ok) {
-        Toast.success('Item removed');
-        renderCart(res.data);
-        updateCartCount();
+    async function updateCartItem(itemId, newQty) {
+        const res = await API.patch('/store/cart/', { item_id: itemId, quantity: newQty });
+        if (res && res.ok) {
+            renderCart(res.data);
+            updateCartCount();
+        } else {
+            Toast.error(res?.data?.error || 'Failed to update');
+        }
     }
-}
 
-async function clearCart() {
-    const res = await API.delete('/store/cart/');
-    if (res && res.ok) {
-        Toast.success('Cart cleared');
-        renderCart(res.data);
-        updateCartCount();
+    async function removeCartItem(itemId) {
+        const res = await API.delete(`/store/cart/?item_id=${itemId}`);
+        if (res && res.ok) {
+            Toast.success('Item removed');
+            renderCart(res.data);
+            updateCartCount();
+        }
     }
-}
 
-document.addEventListener('DOMContentLoaded', loadCart);
+    async function clearCart() {
+        const res = await API.delete('/store/cart/');
+        if (res && res.ok) {
+            Toast.success('Cart cleared');
+            renderCart(res.data);
+            updateCartCount();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadCart);
 </script>
 {% endblock %}
