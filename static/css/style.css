@@ -3,7 +3,7 @@
    Dark luxury theme with gold accents
    ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Montserrat:wght@300;400;500;600;700&display=swap');
 
 /* ─── CSS Custom Properties ─────────────────────────────────── */
 :root {
@@ -35,8 +35,8 @@
     --border-strong: rgba(201, 168, 76, 0.25);
 
     /* Typography */
-    --font-display: 'Playfair Display', Georgia, serif;
-    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Bodoni Moda', 'Didot', 'Playfair Display', serif;
+    --font-body: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
 
     /* Spacing */
     --space-xs: 0.25rem;
