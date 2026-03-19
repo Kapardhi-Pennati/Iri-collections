@@ -11,8 +11,13 @@ from datetime import timedelta
 
 from .models import Category, Product, Cart, CartItem, Order, OrderItem, Transaction
 from .serializers import (
-    CategorySerializer, ProductSerializer, ProductAdminSerializer,
-    CartSerializer, CartItemSerializer, OrderSerializer, OrderCreateSerializer,
+    CategorySerializer,
+    ProductSerializer,
+    ProductAdminSerializer,
+    CartSerializer,
+    CartItemSerializer,
+    OrderSerializer,
+    OrderCreateSerializer,
 )
 
 
@@ -21,7 +26,7 @@ class IsAdminRole(IsAuthenticated):
     def has_permission(self, request, view):
         if not super().has_permission(request, view):
             return False
-        return request.user.role == 'admin'
+        return request.user.role == "admin"
 
 
 # ─── Public: Categories ────────────────────────────────────────
@@ -38,11 +43,11 @@ class ProductListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        qs = Product.objects.filter(is_active=True).select_related('category')
-        category = self.request.query_params.get('category')
-        search = self.request.query_params.get('search')
-        featured = self.request.query_params.get('featured')
-        sort = self.request.query_params.get('sort')
+        qs = Product.objects.filter(is_active=True).select_related("category")
+        category = self.request.query_params.get("category")
+        search = self.request.query_params.get("search")
+        featured = self.request.query_params.get("featured")
+        sort = self.request.query_params.get("sort")
 
         if category:
             qs = qs.filter(category__slug=category)
@@ -50,20 +55,20 @@ class ProductListView(generics.ListAPIView):
             qs = qs.filter(name__icontains=search)
         if featured:
             qs = qs.filter(is_featured=True)
-        if sort == 'price_low':
-            qs = qs.order_by('price')
-        elif sort == 'price_high':
-            qs = qs.order_by('-price')
-        elif sort == 'newest':
-            qs = qs.order_by('-created_at')
+        if sort == "price_low":
+            qs = qs.order_by("price")
+        elif sort == "price_high":
+            qs = qs.order_by("-price")
+        elif sort == "newest":
+            qs = qs.order_by("-created_at")
         return qs
 
 
 class ProductDetailView(generics.RetrieveAPIView):
-    queryset = Product.objects.filter(is_active=True).select_related('category')
+    queryset = Product.objects.filter(is_active=True).select_related("category")
     serializer_class = ProductSerializer
     permission_classes = [AllowAny]
-    lookup_field = 'slug'
+    lookup_field = "slug"
 
 
 # ─── Cart ──────────────────────────────────────────────────────
@@ -77,19 +82,26 @@ class CartView(APIView):
     def post(self, request):
         """Add item to cart."""
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        product_id = request.data.get('product_id')
-        quantity = int(request.data.get('quantity', 1))
+        product_id = request.data.get("product_id")
+        quantity = int(request.data.get("quantity", 1))
 
         if quantity <= 0:
-            return Response({'error': 'Quantity must be at least 1.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Quantity must be at least 1."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             product = Product.objects.get(id=product_id, is_active=True)
         except Product.DoesNotExist:
-            return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )
 
         if quantity > product.stock:
-            return Response({'error': 'Not enough stock.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Not enough stock."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         item, created = CartItem.objects.get_or_create(cart=cart, product=product)
         if not created:
@@ -102,19 +114,23 @@ class CartView(APIView):
     def patch(self, request):
         """Update item quantity."""
         cart = Cart.objects.get(user=request.user)
-        item_id = request.data.get('item_id')
-        quantity = int(request.data.get('quantity', 1))
+        item_id = request.data.get("item_id")
+        quantity = int(request.data.get("quantity", 1))
 
         try:
             item = CartItem.objects.get(id=item_id, cart=cart)
         except CartItem.DoesNotExist:
-            return Response({'error': 'Item not found in cart.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Item not found in cart."}, status=status.HTTP_404_NOT_FOUND
+            )
 
         if quantity <= 0:
             item.delete()
         else:
             if quantity > item.product.stock:
-                return Response({'error': 'Not enough stock.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Not enough stock."}, status=status.HTTP_400_BAD_REQUEST
+                )
             item.quantity = quantity
             item.save()
         return Response(CartSerializer(cart).data)
@@ -122,7 +138,7 @@ class CartView(APIView):
     def delete(self, request):
         """Remove item from cart or clear cart."""
         cart = Cart.objects.get(user=request.user)
-        item_id = request.data.get('item_id') or request.query_params.get('item_id')
+        item_id = request.data.get("item_id") or request.query_params.get("item_id")
         if item_id:
             CartItem.objects.filter(id=item_id, cart=cart).delete()
         else:
@@ -139,12 +155,18 @@ class OrderCreateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            cart = Cart.objects.prefetch_related('items__product').get(user=request.user)
+            cart = Cart.objects.prefetch_related("items__product").get(
+                user=request.user
+            )
         except Cart.DoesNotExist:
-            return Response({'error': 'Cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if cart.items.count() == 0:
-            return Response({'error': 'Cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         with transaction.atomic():
             # Lock the products to prevent concurrent stock depletion (Race Condition Fix)
@@ -157,17 +179,17 @@ class OrderCreateView(APIView):
                 locked_product = product_map.get(item.product_id)
                 if not locked_product or item.quantity > locked_product.stock:
                     return Response(
-                        {'error': f'Not enough stock for {item.product.name}.'},
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": f"Not enough stock for {item.product.name}."},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
 
             # Create order
             order = Order.objects.create(
                 user=request.user,
                 total_amount=cart.total,
-                shipping_address=serializer.validated_data['shipping_address'],
-                phone=serializer.validated_data['phone'],
-                notes=serializer.validated_data.get('notes', ''),
+                shipping_address=serializer.validated_data["shipping_address"],
+                phone=serializer.validated_data["phone"],
+                notes=serializer.validated_data.get("notes", ""),
             )
 
             # Create order items and reduce stock
@@ -194,7 +216,9 @@ class OrderListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).prefetch_related('items', 'transaction')
+        return Order.objects.filter(user=self.request.user).prefetch_related(
+            "items", "transaction"
+        )
 
 
 class OrderDetailView(generics.RetrieveAPIView):
@@ -202,19 +226,21 @@ class OrderDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.role == 'admin':
-            return Order.objects.all().prefetch_related('items', 'transaction')
-        return Order.objects.filter(user=self.request.user).prefetch_related('items', 'transaction')
+        if self.request.user.role == "admin":
+            return Order.objects.all().prefetch_related("items", "transaction")
+        return Order.objects.filter(user=self.request.user).prefetch_related(
+            "items", "transaction"
+        )
 
 
 # ─── Admin: Products CRUD ──────────────────────────────────────
 class AdminProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all().select_related('category')
+    queryset = Product.objects.all().select_related("category")
     serializer_class = ProductAdminSerializer
     permission_classes = [IsAdminRole]
 
     def get_serializer_class(self):
-        if self.action in ('list', 'retrieve'):
+        if self.action in ("list", "retrieve"):
             return ProductSerializer
         return ProductAdminSerializer
 
@@ -227,7 +253,11 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
 
 # ─── Admin: Order Status ───────────────────────────────────────
 class AdminOrderListView(generics.ListAPIView):
-    queryset = Order.objects.all().prefetch_related('items', 'transaction').select_related('user')
+    queryset = (
+        Order.objects.all()
+        .prefetch_related("items", "transaction")
+        .select_related("user")
+    )
     serializer_class = OrderSerializer
     permission_classes = [IsAdminRole]
 
@@ -245,12 +275,17 @@ class AdminOrderStatusView(APIView):
         try:
             order = Order.objects.get(pk=pk)
         except Order.DoesNotExist:
-            return Response({'error': 'Order not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND
+            )
 
-        new_status = request.data.get('status')
+        new_status = request.data.get("status")
         valid = [c[0] for c in Order.STATUS_CHOICES]
         if new_status not in valid:
-            return Response({'error': f'Invalid status. Choose from: {valid}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Invalid status. Choose from: {valid}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         order.status = new_status
         order.save()
@@ -265,46 +300,56 @@ class AdminAnalyticsView(APIView):
         now = timezone.now()
         thirty_days_ago = now - timedelta(days=30)
 
-        total_revenue = Order.objects.filter(
-            status__in=['confirmed', 'shipped', 'delivered']
-        ).aggregate(total=Sum('total_amount'))['total'] or 0
+        total_revenue = (
+            Order.objects.filter(
+                status__in=["confirmed", "shipped", "delivered"]
+            ).aggregate(total=Sum("total_amount"))["total"]
+            or 0
+        )
 
         total_orders = Order.objects.count()
-        pending_orders = Order.objects.filter(status='pending').count()
+        pending_orders = Order.objects.filter(status="pending").count()
         total_products = Product.objects.filter(is_active=True).count()
         low_stock = Product.objects.filter(stock__lte=5, is_active=True).count()
 
         # Daily revenue for last 30 days
         daily_revenue = (
-            Order.objects.filter(created_at__gte=thirty_days_ago, status__in=['confirmed', 'shipped', 'delivered'])
-            .annotate(date=TruncDate('created_at'))
-            .values('date')
-            .annotate(revenue=Sum('total_amount'), count=Count('id'))
-            .order_by('date')
+            Order.objects.filter(
+                created_at__gte=thirty_days_ago,
+                status__in=["confirmed", "shipped", "delivered"],
+            )
+            .annotate(date=TruncDate("created_at"))
+            .values("date")
+            .annotate(revenue=Sum("total_amount"), count=Count("id"))
+            .order_by("date")
         )
 
         # Top products
         top_products = (
-            OrderItem.objects
-            .values('product_name')
-            .annotate(total_sold=Sum('quantity'), total_revenue=Sum(F('price_at_purchase') * F('quantity')))
-            .order_by('-total_sold')[:5]
+            OrderItem.objects.values("product_name")
+            .annotate(
+                total_sold=Sum("quantity"),
+                total_revenue=Sum(F("price_at_purchase") * F("quantity")),
+            )
+            .order_by("-total_sold")[:5]
         )
 
         # Orders by status
         status_breakdown = (
-            Order.objects.values('status')
-            .annotate(count=Count('id'))
-            .order_by('status')
+            Order.objects.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
         )
 
-        return Response({
-            'total_revenue': float(total_revenue),
-            'total_orders': total_orders,
-            'pending_orders': pending_orders,
-            'total_products': total_products,
-            'low_stock_products': low_stock,
-            'daily_revenue': list(daily_revenue),
-            'top_products': list(top_products),
-            'status_breakdown': list(status_breakdown),
-        })
+        return Response(
+            {
+                "total_revenue": float(total_revenue),
+                "total_orders": total_orders,
+                "pending_orders": pending_orders,
+                "total_products": total_products,
+                "low_stock_products": low_stock,
+                "daily_revenue": list(daily_revenue),
+                "top_products": list(top_products),
+                "status_breakdown": list(status_breakdown),
+            }
+        )

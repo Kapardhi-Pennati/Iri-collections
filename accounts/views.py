@@ -20,34 +20,44 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }
-        }, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "user": UserSerializer(user).data,
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        password = request.data.get('password')
+        email = request.data.get("email")
+        password = request.data.get("password")
         if not email or not password:
-            return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Email and password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         user = authenticate(request, username=email, password=password)
         if user is None:
-            return Response({'error': 'Invalid credentials.'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED
+            )
         refresh = RefreshToken.for_user(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'tokens': {
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
+        return Response(
+            {
+                "user": UserSerializer(user).data,
+                "tokens": {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                },
             }
-        })
+        )
 
 
 class ProfileView(generics.RetrieveAPIView):

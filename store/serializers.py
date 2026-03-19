@@ -7,46 +7,72 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = ('id', 'name', 'slug', 'description', 'image', 'product_count')
+        fields = ("id", "name", "slug", "description", "image", "product_count")
 
     def get_product_count(self, obj):
         return obj.products.filter(is_active=True).count()
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
     display_image = serializers.ReadOnlyField()
     in_stock = serializers.ReadOnlyField()
 
     class Meta:
         model = Product
         fields = (
-            'id', 'name', 'slug', 'description', 'price', 'compare_price',
-            'stock', 'category', 'category_name', 'image', 'image_url',
-            'display_image', 'is_active', 'is_featured', 'material',
-            'weight', 'in_stock', 'created_at',
+            "id",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "compare_price",
+            "stock",
+            "category",
+            "category_name",
+            "image",
+            "image_url",
+            "display_image",
+            "is_active",
+            "is_featured",
+            "material",
+            "weight",
+            "in_stock",
+            "created_at",
         )
 
 
 class ProductAdminSerializer(serializers.ModelSerializer):
     """Writable serializer for admin product management."""
+
     class Meta:
         model = Product
         fields = (
-            'id', 'name', 'slug', 'description', 'price', 'compare_price',
-            'stock', 'category', 'image', 'image_url', 'is_active',
-            'is_featured', 'material', 'weight',
+            "id",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "compare_price",
+            "stock",
+            "category",
+            "image",
+            "image_url",
+            "is_active",
+            "is_featured",
+            "material",
+            "weight",
         )
-        read_only_fields = ('slug',)
+        read_only_fields = ("slug",)
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product_detail = ProductSerializer(source='product', read_only=True)
+    product_detail = ProductSerializer(source="product", read_only=True)
     subtotal = serializers.ReadOnlyField()
 
     class Meta:
         model = CartItem
-        fields = ('id', 'product', 'product_detail', 'quantity', 'subtotal')
+        fields = ("id", "product", "product_detail", "quantity", "subtotal")
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -56,7 +82,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ('id', 'items', 'total', 'item_count')
+        fields = ("id", "items", "total", "item_count")
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -64,13 +90,27 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ('id', 'product', 'product_name', 'quantity', 'price_at_purchase', 'subtotal')
+        fields = (
+            "id",
+            "product",
+            "product_name",
+            "quantity",
+            "price_at_purchase",
+            "subtotal",
+        )
 
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ('id', 'razorpay_order_id', 'razorpay_payment_id', 'status', 'amount', 'created_at')
+        fields = (
+            "id",
+            "razorpay_order_id",
+            "razorpay_payment_id",
+            "status",
+            "amount",
+            "created_at",
+        )
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -80,9 +120,17 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = (
-            'id', 'order_number', 'total_amount', 'status',
-            'shipping_address', 'phone', 'notes', 'items',
-            'transaction', 'created_at', 'updated_at',
+            "id",
+            "order_number",
+            "total_amount",
+            "status",
+            "shipping_address",
+            "phone",
+            "notes",
+            "items",
+            "transaction",
+            "created_at",
+            "updated_at",
         )
 
 

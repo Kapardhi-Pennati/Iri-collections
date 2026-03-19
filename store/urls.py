@@ -3,25 +3,41 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-router.register(r'admin/products', views.AdminProductViewSet, basename='admin-products')
-router.register(r'admin/categories', views.AdminCategoryViewSet, basename='admin-categories')
+router.register(r"admin/products", views.AdminProductViewSet, basename="admin-products")
+router.register(
+    r"admin/categories", views.AdminCategoryViewSet, basename="admin-categories"
+)
 
 urlpatterns = [
     # Public
-    path('categories/', views.CategoryListView.as_view(), name='category-list'),
-    path('products/', views.ProductListView.as_view(), name='product-list'),
-    path('products/<slug:slug>/', views.ProductDetailView.as_view(), name='product-detail'),
+    path("categories/", views.CategoryListView.as_view(), name="category-list"),
+    path("products/", views.ProductListView.as_view(), name="product-list"),
+    path(
+        "products/<slug:slug>/",
+        views.ProductDetailView.as_view(),
+        name="product-detail",
+    ),
     # Cart (authenticated)
-    path('cart/', views.CartView.as_view(), name='cart'),
+    path("cart/", views.CartView.as_view(), name="cart"),
     # Orders (authenticated)
-    path('orders/', views.OrderListView.as_view(), name='order-list'),
-    path('orders/create/', views.OrderCreateView.as_view(), name='order-create'),
-    path('orders/<int:pk>/', views.OrderDetailView.as_view(), name='order-detail'),
+    path("orders/", views.OrderListView.as_view(), name="order-list"),
+    path("orders/create/", views.OrderCreateView.as_view(), name="order-create"),
+    path("orders/<int:pk>/", views.OrderDetailView.as_view(), name="order-detail"),
     # Admin
-    path('admin/orders/', views.AdminOrderListView.as_view(), name='admin-orders'),
-    path('admin/orders/<int:pk>/', views.AdminOrderDetailView.as_view(), name='admin-order-detail'),
-    path('admin/orders/<int:pk>/status/', views.AdminOrderStatusView.as_view(), name='admin-order-status'),
-    path('admin/analytics/', views.AdminAnalyticsView.as_view(), name='admin-analytics'),
+    path("admin/orders/", views.AdminOrderListView.as_view(), name="admin-orders"),
+    path(
+        "admin/orders/<int:pk>/",
+        views.AdminOrderDetailView.as_view(),
+        name="admin-order-detail",
+    ),
+    path(
+        "admin/orders/<int:pk>/status/",
+        views.AdminOrderStatusView.as_view(),
+        name="admin-order-status",
+    ),
+    path(
+        "admin/analytics/", views.AdminAnalyticsView.as_view(), name="admin-analytics"
+    ),
     # Router
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]
