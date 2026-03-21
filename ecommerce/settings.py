@@ -363,8 +363,8 @@ CACHES = {
     }
 }
 
-# Fallback to in-memory cache if Redis unavailable (development only)
-if os.getenv("USE_LOCAL_CACHE") == "true":
+# Fallback to in-memory cache if Redis unavailable
+if os.getenv("USE_LOCAL_CACHE") == "true" or (os.getenv("VERCEL") == "1" and not os.getenv("REDIS_URL")):
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
