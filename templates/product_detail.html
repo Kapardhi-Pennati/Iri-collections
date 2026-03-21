@@ -47,6 +47,9 @@ function renderProduct(p) {
     if (p.stock === 0) { stockClass = 'out-of-stock'; stockText = 'Out of Stock'; }
     else if (p.stock <= 5) { stockClass = 'low-stock'; stockText = `Only ${p.stock} left`; }
 
+    const isInWishlist = window.wishlistItems ? window.wishlistItems.has(p.id) : false;
+    const heartIcon = isInWishlist ? '♥' : '♡';
+
     document.getElementById('product-detail-content').innerHTML = `
         <div class="product-detail fade-in">
             <div class="product-detail-image">
@@ -84,12 +87,16 @@ function renderProduct(p) {
                     <button class="btn btn-primary btn-lg" onclick="addToCartDetail()" style="flex:1;">
                         🛒 Add to Cart
                     </button>
+                    <button class="wishlist-btn" onclick="toggleWishlist(${p.id})" id="btn-wishlist-${p.id}" style="font-size: 1.5rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; width: 50px; cursor: pointer; color: var(--gold);">${heartIcon}</button>
                     <button class="btn btn-secondary btn-lg" onclick="buyNow()">
                         Buy Now
                     </button>
                 </div>
                 ` : `
-                <button class="btn btn-primary btn-lg btn-block" disabled>Out of Stock</button>
+                <div style="display:flex; gap:var(--space-md);">
+                    <button class="btn btn-primary btn-lg btn-block" disabled style="flex:1;">Out of Stock</button>
+                    <button class="wishlist-btn" onclick="toggleWishlist(${p.id})" id="btn-wishlist-${p.id}" style="font-size: 1.5rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; width: 50px; cursor: pointer; color: var(--gold);">${heartIcon}</button>
+                </div>
                 `}
             </div>
         </div>

@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
+from django.core.mail import send_mail
 
 
 class Category(models.Model):
@@ -101,7 +102,7 @@ class Cart(models.Model):
 
     @property
     def item_count(self):
-        return sum(item.quantity for item in self.items.all())
+        return sum(item.quantity for item in self.items.all() if item.product.stock > 0)
 
 
 class CartItem(models.Model):
@@ -123,6 +124,8 @@ class CartItem(models.Model):
 
     @property
     def subtotal(self):
+        if self.product.stock <= 0:
+            return 0
         return self.product.price * self.quantity
 
 
@@ -139,12 +142,14 @@ class Order(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders"
     )
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(
         max_length=12, choices=STATUS_CHOICES, default="pending", db_index=True
     )
     shipping_address = models.TextField()
     phone = models.CharField(max_length=15, blank=True)
     notes = models.TextField(blank=True)
+    tracking_image = models.ImageField(upload_to="tracking/", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -157,10 +162,41 @@ class Order(models.Model):
             )
         ]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_status = self.status
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = f"IRI-{uuid.uuid4().hex[:8].upper()}"
+
+        # If image uploaded while shipped -> move to delivered
+        if self.status == "shipped" and self.tracking_image and not getattr(self, "_delivering", False):
+            self.status = "delivered"
+            self._delivering = True
+
         super().save(*args, **kwargs)
+
+        # Triggers email if status changed (except delivered)
+        if self.pk and getattr(self, "_original_status", self.status) != self.status:
+            if self.status != "delivered":
+                try:
+                    subject = f"Order {self.order_number} Status Update"
+                    message = f"Hello {self.user.username},\n\nYour order {self.order_number} status is now: {self.status.upper()}.\n\nThank you for shopping with us!"
+                    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [self.user.email], fail_silently=True)
+                except Exception:
+                    pass
+            
+            # Auto refund email if cancelled
+            if self.status == "cancelled":
+                try:
+                    subject = f"Order {self.order_number} Cancelled & Refund Initiated"
+                    message = f"Hello {self.user.username},\n\nYour order {self.order_number} has been cancelled. If any payment was deducted, a refund has been initiated to your original payment method.\n\nThank you."
+                    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [self.user.email], fail_silently=True)
+                except Exception:
+                    pass
+
+            self._original_status = self.status
 
     def __str__(self):
         return self.order_number
@@ -211,8 +247,26 @@ class Transaction(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        db_table = "transactions"
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Cancel order automatically if payment failed
+        if self.status == "failed" and self.order.status != "cancelled":
+            self.order.status = "cancelled"
+            self.order.save()
 
     def __str__(self):
         return f"Txn {self.razorpay_order_id} - {self.status}"
+
+
+class Wishlist(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wishlist"
+    )
+    products = models.ManyToManyField(Product, related_name="wishlisted_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "wishlists"
+
+    def __str__(self):
+        return f"Wishlist of {self.user.email}"

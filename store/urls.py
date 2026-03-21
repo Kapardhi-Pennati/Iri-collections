@@ -17,12 +17,15 @@ urlpatterns = [
         views.ProductDetailView.as_view(),
         name="product-detail",
     ),
-    # Cart (authenticated)
+    # Cart & Wishlist (authenticated)
     path("cart/", views.CartView.as_view(), name="cart"),
+    path("wishlist/", views.WishlistView.as_view(), name="wishlist"),
     # Orders (authenticated)
+    path("orders/pincode-verify/", views.PincodeVerifyView.as_view(), name="pincode-verify"),
     path("orders/", views.OrderListView.as_view(), name="order-list"),
     path("orders/create/", views.OrderCreateView.as_view(), name="order-create"),
     path("orders/<int:pk>/", views.OrderDetailView.as_view(), name="order-detail"),
+    path("orders/<int:pk>/cancel/", views.CancelOrderView.as_view(), name="order-cancel"),
     # Admin
     path("admin/orders/", views.AdminOrderListView.as_view(), name="admin-orders"),
     path(
@@ -34,6 +37,11 @@ urlpatterns = [
         "admin/orders/<int:pk>/status/",
         views.AdminOrderStatusView.as_view(),
         name="admin-order-status",
+    ),
+    path(
+        "admin/orders/<int:pk>/tracking/",
+        views.AdminOrderTrackingUploadView.as_view(),
+        name="admin-order-tracking",
     ),
     path(
         "admin/analytics/", views.AdminAnalyticsView.as_view(), name="admin-analytics"

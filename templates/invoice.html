@@ -287,6 +287,7 @@
                             <div class="meta-group"><span class="meta-label">Invoice / Order #</span> ${escapeHTML(order.order_number)}</div>
                             <div class="meta-group"><span class="meta-label">Date</span> ${date}</div>
                             <div class="meta-group"><span class="meta-label">Payment Status</span> ${statusBadge}</div>
+                            ${order.tracking_image ? `<div class="meta-group"><span class="meta-label">Tracking</span> <a href="${order.tracking_image}" target="_blank" style="color:var(--gold);">View Proof</a></div>` : ''}
                         </div>
                     </div>
 
@@ -328,9 +329,14 @@
                         <table class="totals-table">
                             <tr>
                                 <td class="label">Subtotal</td>
-                                <td>${formatPrice(order.total_amount)}</td>
+                                <td>${formatPrice(order.total_amount - (order.shipping_fee || 0))}</td>
                             </tr>
-                            
+                            ${order.shipping_fee > 0 ? `
+                            <tr>
+                                <td class="label">Shipping Fee</td>
+                                <td>${formatPrice(order.shipping_fee)}</td>
+                            </tr>
+                            ` : ''}
                             <tr class="row-total">
                                 <td class="label">Total Amount</td>
                                 <td>${formatPrice(order.total_amount)}</td>

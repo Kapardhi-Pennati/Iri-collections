@@ -56,21 +56,44 @@ async function loadOrders() {
                         <span class="order-status ${order.status}">${order.status}</span>
                     </div>
                     ${itemsList}
+                    ${order.tracking_image ? `
+                    <div style="margin-top:var(--space-md);">
+                        <div style="font-size:0.85rem; font-weight:600; margin-bottom:0.5rem; color:var(--text-muted); text-transform:uppercase;">Tracking Proof</div>
+                        <img src="${order.tracking_image}" alt="Tracking" style="max-width:120px; display:block; border-radius: var(--radius-sm); border:1px solid var(--border); cursor:pointer;" onclick="window.open('${order.tracking_image}', '_blank')">
+                    </div>
+                    ` : ''}
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:var(--space-md); padding-top:var(--space-md); border-top:1px solid var(--border); font-weight:700;">
                         <div>
                             <span>Total:</span>
                             <span style="color:var(--gold-light); margin-left:10px;">${formatPrice(order.total_amount)}</span>
+                            ${parseFloat(order.shipping_fee) > 0 ? `<div style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">(incl. ${formatPrice(order.shipping_fee)} shipping)</div>` : ''}
                         </div>
-                        <a href="/invoice/${order.id}/" target="_blank" class="btn btn-sm btn-ghost" style="text-decoration:none;">🖨️ Print Bill</a>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            ${['pending', 'confirmed'].includes(order.status) ? `<button class="btn btn-sm btn-ghost" style="color:var(--error);" onclick="cancelOrder(${order.id})">Cancel Order</button>` : ''}
+                            <a href="/invoice/${order.id}/" target="_blank" class="btn btn-sm btn-ghost" style="text-decoration:none;">🖨️ Print Bill</a>
+                        </div>
                     </div>
                     ${order.transaction ? `
                     <div style="margin-top:var(--space-sm); font-size:0.8rem; color:var(--text-muted);">
-                        Payment: <span class="order-status ${order.transaction.status}">${order.transaction.status}</span>
+                        Transaction ID: ${escapeHTML(order.transaction.razorpay_payment_id || order.transaction.razorpay_order_id)}
+                        <span style="margin-left: 10px;">Payment Status:</span> <span class="order-status ${order.transaction.status}">${order.transaction.status}</span>
                     </div>` : ''}
                 </div>`;
         }).join('');
     } catch (err) {
         console.error(err);
+    }
+}
+
+async function cancelOrder(orderId) {
+    if (!confirm("Are you sure you want to cancel this order? Any payments will be refunded.")) return;
+    
+    const res = await API.post(`/store/orders/${orderId}/cancel/`);
+    if (res && res.ok) {
+        Toast.success(res.data.message || 'Order cancelled successfully.');
+        loadOrders();
+    } else {
+        Toast.error(res?.data?.error || 'Failed to cancel order.');
     }
 }
 

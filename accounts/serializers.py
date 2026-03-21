@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from .models import Address
 
 User = get_user_model()
 
@@ -46,3 +47,10 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
         )
         read_only_fields = fields
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ("id", "name", "street", "city", "state", "pincode", "phone", "is_default")
+        read_only_fields = ("id",)

@@ -244,13 +244,27 @@ function productCardHTML(product) {
         : 0;
     const imgSrc = product.display_image || product.image_url || product.image || '';
 
+    const isOOS = product.stock <= 0;
+    const cardOpacity = isOOS ? '0.6' : '1';
+    
+    // Heart icon logic
+    const isInWishlist = window.wishlistItems ? window.wishlistItems.has(product.id) : false;
+    const heartIcon = isInWishlist ? '♥' : '♡';
+
     return `
-        <div class="card product-card" onclick="window.location.href='/product/${product.slug}/'" data-product-id="${product.id}">
+        <div class="card product-card" onclick="window.location.href='/product/${product.slug}/'" data-product-id="${product.id}" style="opacity: ${cardOpacity}; position: relative;">
             <div class="product-card-image">
                 <img data-src="${imgSrc}" alt="${product.name}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect fill='%2316161f' width='400' height='400'/%3E%3C/svg%3E">
-                ${discount > 0 ? `<span class="product-card-badge">${discount}% Off</span>` : ''}
+                ${discount > 0 && !isOOS ? `<span class="product-card-badge">${discount}% Off</span>` : ''}
+                ${isOOS ? `<span class="product-card-badge" style="background:var(--error); color:white;">Out of Stock</span>` : ''}
+                
+                <button class="wishlist-btn" onclick="event.stopPropagation(); toggleWishlist(${product.id})" id="btn-wishlist-${product.id}" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: var(--gold); border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 1.2rem; cursor: pointer; z-index: 2; transition: transform 0.2s; display: flex; align-items: center; justify-content: center;">${heartIcon}</button>
+
                 <div class="product-card-actions">
-                    <button class="product-card-action-btn" onclick="event.stopPropagation(); addToCart(${product.id})" title="Add to Cart">🛒</button>
+                    ${isOOS ? 
+                        `<button class="product-card-action-btn" disabled style="opacity:0.5;cursor:not-allowed;" title="Out of Stock">🚫</button>` : 
+                        `<button class="product-card-action-btn" onclick="event.stopPropagation(); addToCart(${product.id})" title="Add to Cart">🛒</button>`
+                    }
                 </div>
             </div>
             <div class="product-card-info">
@@ -282,10 +296,59 @@ async function addToCart(productId, quantity = 1) {
     }
 }
 
+// ─── Wishlist ──────────────────────────────────────────────────
+window.wishlistItems = new Set();
+async function loadWishlistItems() {
+    if (!API.isLoggedIn()) return;
+    try {
+        const items = await API.get('/store/wishlist/');
+        if (items) {
+            window.wishlistItems = new Set(items.map(i => i.id));
+        }
+    } catch {}
+}
+
+async function toggleWishlist(productId) {
+    if (!API.isLoggedIn()) {
+        Toast.info('Please login to save to wishlist');
+        setTimeout(() => window.location.href = '/login/', 1000);
+        return;
+    }
+    const isWished = window.wishlistItems.has(productId);
+    try {
+        if (isWished) {
+            const res = await API.delete('/store/wishlist/', { product_id: productId });
+            if (res && res.ok) {
+                window.wishlistItems.delete(productId);
+                updateWishlistUI(productId, false);
+                Toast.success('Removed from wishlist');
+            }
+        } else {
+            const res = await API.post('/store/wishlist/', { product_id: productId });
+            if (res && res.ok) {
+                window.wishlistItems.add(productId);
+                updateWishlistUI(productId, true);
+                Toast.success('Added to wishlist');
+            }
+        }
+    } catch {
+        Toast.error("Failed to update wishlist");
+    }
+}
+
+function updateWishlistUI(productId, added) {
+    document.querySelectorAll(`#btn-wishlist-${productId}`).forEach(btn => {
+        btn.textContent = added ? '♥' : '♡';
+        btn.style.transform = 'scale(1.2)';
+        setTimeout(() => btn.style.transform = 'none', 200);
+    });
+}
+
 // ─── Init ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     Toast.init();
     updateNavbar();
+    await loadWishlistItems();
     initLazyLoading();
 
     // Mobile nav toggle

@@ -35,6 +35,15 @@
             <!-- Step 1: Shipping -->
             <div id="step-1" class="card-glass">
                 <h2 style="font-family:var(--font-display); margin-bottom:var(--space-lg);">Shipping Details</h2>
+                
+                <div id="saved-addresses-container" style="margin-bottom: var(--space-xl); display: none;">
+                    <label style="font-weight:600; font-size: 0.9rem;">Saved Addresses</label>
+                    <select id="saved-address-select" class="form-control" style="margin-bottom: var(--space-md); padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); border-color: var(--gold);" onchange="fillSavedAddress()">
+                        <option value="">-- Choose a saved address or enter a new one --</option>
+                    </select>
+                    <hr style="border-color: var(--border); margin: 20px 0;">
+                </div>
+
                 <form id="shipping-form">
                     <div class="form-group">
                         <label for="ship-name">Full Name</label>
@@ -61,6 +70,11 @@
                     <div class="form-group">
                         <label for="ship-notes">Order Notes <span style="color:var(--text-muted); text-transform:none;">(optional)</span></label>
                         <textarea id="ship-notes" rows="2" placeholder="Any special instructions..."></textarea>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.9rem; font-weight:normal;">
+                            <input type="checkbox" id="ship-save-address" checked> Save this address for future orders
+                        </label>
                     </div>
                     <button type="submit" class="btn btn-primary btn-block btn-lg">Continue to Review →</button>
                 </form>
@@ -121,6 +135,54 @@ async function loadCheckoutCart() {
         document.getElementById('ship-name').value = user.full_name || '';
         document.getElementById('ship-phone').value = user.phone || '';
     }
+
+    // Fetch saved addresses
+    try {
+        const addrRes = await API.get('/auth/addresses/');
+        if (addrRes && addrRes.length > 0) {
+            window.userAddresses = addrRes;
+            const container = document.getElementById('saved-addresses-container');
+            const select = document.getElementById('saved-address-select');
+            container.style.display = 'block';
+            addrRes.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = `${a.name || 'Address'} - ${a.street}, ${a.city} - ${a.pincode}`;
+                select.appendChild(opt);
+            });
+            
+            // Auto select default if exists
+            const defAddr = addrRes.find(a => a.is_default) || addrRes[0];
+            if (defAddr) {
+                select.value = defAddr.id;
+                fillSavedAddress();
+            }
+        }
+    } catch (e) { console.error('Error fetching addresses', e); }
+}
+
+function fillSavedAddress() {
+    const id = document.getElementById('saved-address-select').value;
+    if (!id || !window.userAddresses) {
+        document.getElementById('shipping-form').reset();
+        const user = API.getUser();
+        if (user) {
+            document.getElementById('ship-name').value = user.full_name || '';
+            document.getElementById('ship-phone').value = user.phone || '';
+        }
+        return;
+    }
+    const a = window.userAddresses.find(x => x.id == id);
+    if (a) {
+        document.getElementById('ship-address').value = a.street;
+        document.getElementById('ship-city').value = a.city;
+        document.getElementById('ship-pincode').value = a.pincode;
+        if (a.phone) document.getElementById('ship-phone').value = a.phone;
+        const user = API.getUser();
+        if (user) {
+            document.getElementById('ship-name').value = a.name || user.full_name || '';
+        }
+    }
 }
 
 function goToStep(step) {
@@ -136,8 +198,47 @@ function goToStep(step) {
 }
 
 // Step 1 → Step 2: Review
-document.getElementById('shipping-form').addEventListener('submit', (e) => {
+document.getElementById('shipping-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    // Check if any OOS items
+    const hasOOS = cartData.items.some(i => i.is_out_of_stock);
+    if (hasOOS) {
+        Toast.error("Please remove out-of-stock items from your cart before proceeding.");
+        return;
+    }
+
+    const btn = e.submitter;
+    if (btn) { btn.disabled = true; btn.textContent = 'Verifying Pincode...'; }
+
+    const pincode = document.getElementById('ship-pincode').value;
+    const res = await API.post('/store/orders/pincode-verify/', { pincode });
+    
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue to Review →'; }
+
+    let shippingFee = 80;
+    if (res && res.ok) {
+        shippingFee = res.data.shipping_fee;
+        
+        // Save Address if checked
+        const saveAddr = document.getElementById('ship-save-address')?.checked;
+        const selId = document.getElementById('saved-address-select')?.value;
+        if (saveAddr && !selId) {
+            API.post('/auth/addresses/', {
+                street: document.getElementById('ship-address').value,
+                city: document.getElementById('ship-city').value,
+                pincode: pincode,
+                phone: document.getElementById('ship-phone').value,
+                state: res.data.state || "India",
+                name: document.getElementById('ship-name').value || "Address"
+            }).catch(e => console.error("Could not save address", e));
+        }
+
+    } else {
+        Toast.error("Invalid Pincode: " + (res?.data?.error || 'Cannot verify serviceability.'));
+        return;
+    }
+
     // Render review
     const items = cartData.items.map(item => {
         const p = item.product_detail;
@@ -159,11 +260,10 @@ document.getElementById('shipping-form').addEventListener('submit', (e) => {
         <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-bottom:0.5rem;">Shipping To</div>
         <div style="line-height:1.8;">${addr}</div>`;
 
-    const shipping = cartData.total >= 1500 ? 0 : 80;
-    const total = cartData.total + shipping;
+    const total = cartData.total + shippingFee;
     document.getElementById('review-total').innerHTML = `
         <div class="cart-summary-row"><span>Subtotal</span><span>${formatPrice(cartData.total)}</span></div>
-        <div class="cart-summary-row"><span>Shipping</span><span style="color:var(--success);">${shipping === 0 ? 'Free' : formatPrice(shipping)}</span></div>
+        <div class="cart-summary-row"><span>Shipping</span><span style="color:var(--success);">${shippingFee === 0 ? 'Free' : formatPrice(shippingFee)}</span></div>
         <div class="cart-summary-row total"><span>Total</span><span>${formatPrice(total)}</span></div>`;
 
     goToStep(2);

@@ -69,10 +69,14 @@ class ProductAdminSerializer(serializers.ModelSerializer):
 class CartItemSerializer(serializers.ModelSerializer):
     product_detail = ProductSerializer(source="product", read_only=True)
     subtotal = serializers.ReadOnlyField()
+    is_out_of_stock = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ("id", "product", "product_detail", "quantity", "subtotal")
+        fields = ("id", "product", "product_detail", "quantity", "subtotal", "is_out_of_stock")
+
+    def get_is_out_of_stock(self, obj):
+        return obj.product.stock <= 0
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -123,10 +127,12 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "order_number",
             "total_amount",
+            "shipping_fee",
             "status",
             "shipping_address",
             "phone",
             "notes",
+            "tracking_image",
             "items",
             "transaction",
             "created_at",

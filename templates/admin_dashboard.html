@@ -169,6 +169,25 @@
         </div>
     </div>
 </div>
+
+<!-- Tracking Modal -->
+<div class="modal-overlay" id="tracking-modal">
+    <div class="modal">
+        <h2>Upload Tracking Image</h2>
+        <form id="tracking-form">
+            <input type="hidden" id="tracking-order-id">
+            <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem;">Uploading a tracking slip will automatically change the order status to Delivered.</p>
+            <div class="form-group">
+                <label>Tracking Slip Image</label>
+                <input type="file" id="track-image-file" accept="image/*" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('tracking-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="track-submit-btn">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -450,6 +469,7 @@ async function loadAdminOrders() {
                     <td>
                         <div style="display:flex; gap:var(--space-sm); align-items:center;">
                             <a href="/invoice/${o.id}/" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;" title="Print Invoice">🖨️</a>
+                            ${o.status === 'shipped' ? `<button class="btn btn-ghost btn-sm" onclick="openTrackingModal(${o.id})">Tracking</button>` : ''}
                             <button class="btn btn-ghost btn-sm" onclick="openOrderStatusModal(${o.id}, '${o.status}')">Update</button>
                             <button class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="deleteOrder(${o.id}, '${o.order_number}')">Delete</button>
                         </div>
@@ -495,6 +515,43 @@ async function deleteOrder(id, orderNumber) {
         Toast.error('Failed to delete order.');
     }
 }
+
+function openTrackingModal(orderId) {
+    document.getElementById('tracking-form').reset();
+    document.getElementById('tracking-order-id').value = orderId;
+    openModal('tracking-modal');
+}
+
+document.getElementById('tracking-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('track-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    
+    const orderId = document.getElementById('tracking-order-id').value;
+    const file = document.getElementById('track-image-file').files[0];
+    const formData = new FormData();
+    formData.append('tracking_image', file);
+
+    const token = API.getToken();
+    const res = await fetch(`/api/store/admin/orders/${orderId}/tracking/`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    });
+
+    if (res.ok) {
+        Toast.success('Tracking image uploaded. Status is now Delivered.');
+        closeModal('tracking-modal');
+        loadAdminOrders();
+        loadOverview();
+    } else {
+        const err = await res.json();
+        Toast.error(err.error || 'Failed to upload tracking image.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Upload';
+});
 
 // ─── Categories Management ─────────────────────
 async function loadAdminCategories() {

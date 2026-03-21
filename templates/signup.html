@@ -33,10 +33,20 @@
                 <input type="password" id="password2" placeholder="Repeat password" required>
             </div>
             <div id="signup-error" class="form-error" style="display:none; margin-bottom:1rem;"></div>
-            <button type="submit" class="btn btn-primary btn-block btn-lg" id="signup-btn">Create Account</button>
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="send-otp-btn">Send Verification OTP</button>
         </form>
 
-        <div class="auth-footer">
+        <form id="otp-form" style="display:none; margin-top:1rem;">
+            <p>We've sent a 6-digit code to your email. Enter it below to complete registration.</p>
+            <div class="form-group">
+                <label for="otp_code">Verification Code</label>
+                <input type="text" id="otp_code" placeholder="123456" required maxlength="6" pattern="\d{6}">
+            </div>
+            <div id="otp-error" class="form-error" style="display:none; margin-bottom:1rem;"></div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="signup-btn">Verify & Create Account</button>
+        </form>
+
+        <div class="auth-footer" style="margin-top:2rem;">
             Already have an account? <a href="/login/">Sign in</a>
         </div>
     </div>
@@ -45,30 +55,72 @@
 
 {% block extra_js %}
 <script>
+let userEmail = "";
+
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const btn = document.getElementById('signup-btn');
+    const btn = document.getElementById('send-otp-btn');
     const errEl = document.getElementById('signup-error');
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const password2 = document.getElementById('password2').value;
+
+    if (password !== password2) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending OTP...';
+    errEl.style.display = 'none';
+
+    // Step 1: Request OTP
+    const res = await API.post('/auth/request-otp/', { email: email, action: 'signup' });
+
+    if (res && res.ok) {
+        userEmail = email;
+        Toast.success('OTP sent to your email!');
+        document.getElementById('signup-form').style.display = 'none';
+        document.getElementById('otp-form').style.display = 'block';
+    } else {
+        errEl.textContent = res?.data?.error || 'Failed to send OTP. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Send Verification OTP';
+    }
+});
+
+document.getElementById('otp-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('signup-btn');
+    const errEl = document.getElementById('otp-error');
     btn.disabled = true;
     btn.textContent = 'Creating account...';
     errEl.style.display = 'none';
 
+    const otp_code = document.getElementById('otp_code').value;
+
+    // Step 2: Verify OTP
+    const verifyRes = await API.post('/auth/verify-otp/', { email: userEmail, otp_code });
+    if (!verifyRes || !verifyRes.ok) {
+        errEl.textContent = verifyRes?.data?.error || 'Invalid OTP. Try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Verify & Create Account';
+        return;
+    }
+
+    // Step 3: Register Details
     const data = {
         full_name: document.getElementById('full_name').value,
-        email: document.getElementById('email').value,
-        username: document.getElementById('email').value.split('@')[0],
+        email: userEmail,
+        username: userEmail.split('@')[0],
         phone: document.getElementById('phone').value,
         password: document.getElementById('password').value,
         password2: document.getElementById('password2').value,
     };
-
-    if (data.password !== data.password2) {
-        errEl.textContent = 'Passwords do not match.';
-        errEl.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = 'Create Account';
-        return;
-    }
 
     const res = await API.post('/auth/register/', data);
 
@@ -82,14 +134,14 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         let msg = 'Registration failed. ';
         if (errors) {
             for (const [key, val] of Object.entries(errors)) {
-                if (Array.isArray(val)) msg += val.join(' ');
-                else if (typeof val === 'string') msg += val;
+                if (typeof val === 'string') msg += val;
+                else if (Array.isArray(val)) msg += val.join(' ');
             }
         }
         errEl.textContent = msg;
         errEl.style.display = 'block';
         btn.disabled = false;
-        btn.textContent = 'Create Account';
+        btn.textContent = 'Verify & Create Account';
     }
 });
 </script>
