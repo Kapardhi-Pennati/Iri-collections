@@ -36,6 +36,13 @@ if DEBUG:
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+# Automatically allow Vercel domains
+if os.getenv("VERCEL") == "1":
+    ALLOWED_HOSTS.append(".vercel.app")
+    # Also add the specific system host if provided
+    if os.getenv("VERCEL_URL"):
+        ALLOWED_HOSTS.append(os.getenv("VERCEL_URL"))
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
