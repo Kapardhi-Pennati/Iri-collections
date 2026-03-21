@@ -366,6 +366,9 @@ if os.getenv("USE_LOCAL_CACHE") == "true":
 # LOGGING CONFIGURATION (Audit trail)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Check if running on Vercel
+IS_VERCEL = os.getenv("VERCEL") == "1"
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -374,49 +377,55 @@ LOGGING = {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
             "style": "{",
         },
-        "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(name)s %(levelname)s %(message)s",
-        },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "app.log",
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 10,
-            "formatter": "json",
-        },
-        "audit_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": BASE_DIR / "logs" / "audit.log",
-            "maxBytes": 1024 * 1024 * 20,  # 20 MB
-            "backupCount": 30,
-            "formatter": "json",
-        },
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "level": "INFO",
         },
         "core.security": {
-            "handlers": ["console", "audit_file"],
+            "handlers": ["console"],
             "level": "INFO",
         },
         "accounts": {
-            "handlers": ["console", "audit_file"],
+            "handlers": ["console"],
             "level": "INFO",
         },
     },
 }
 
-# Create logs directory if it doesn't exist
-os.makedirs(BASE_DIR / "logs", exist_ok=True)
+# Only use file logging if not on Vercel (local development)
+if not IS_VERCEL:
+    LOGGING["formatters"]["json"] = {
+        "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+        "format": "%(asctime)s %(name)s %(levelname)s %(message)s",
+    }
+    LOGGING["handlers"]["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": BASE_DIR / "logs" / "app.log",
+        "maxBytes": 1024 * 1024 * 10,
+        "backupCount": 10,
+        "formatter": "json",
+    }
+    LOGGING["handlers"]["audit_file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": BASE_DIR / "logs" / "audit.log",
+        "maxBytes": 1024 * 1024 * 20,
+        "backupCount": 30,
+        "formatter": "json",
+    }
+    LOGGING["loggers"]["django"]["handlers"].append("file")
+    LOGGING["loggers"]["core.security"]["handlers"].append("audit_file")
+    LOGGING["loggers"]["accounts"]["handlers"].append("audit_file")
+    
+    # Create logs directory if it doesn't exist
+    os.makedirs(BASE_DIR / "logs", exist_ok=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MISCELLANEOUS SECURITY
