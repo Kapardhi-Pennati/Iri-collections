@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.venv
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Testing
+.pytest_cache
+htmlcov
+
+# Local development
+.env
+.env.local
+.env.*.local
+db.sqlite3
+*.log
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+node_modules/
+
+# Documentation
+docs/
+*.md
+
+# Tests
+tests/
+test_*
+*_test.py
