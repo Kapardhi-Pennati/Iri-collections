@@ -52,15 +52,42 @@ The platform has been hardened with a production-grade defensive security layer:
 
 ## 🚀 Production Deployment (Vercel)
 
-The repository is configured for serverless deployment on Vercel.
+The repository is configured for serverless deployment on Vercel with automatic scaling and zero-downtime deploys.
 
-1. **Prepare Managed Database**: Vercel Postgres or Supabase (PostgreSQL).
-2. **Setup Vercel**:
-   - Install Vercel CLI: `npm i -g vercel`
-   - Run `vercel` in the project root.
-3. **Inject Environment Variables**:
-   - `SECRET_KEY`, `DEBUG=False`, `ALLOWED_HOSTS`.
-   - `DATABASE_URL` (PostgreSQL connection string).
-   - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`.
+### Quick Start
+
+1. **Setup Vercel CLI**:
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Configure Database**: Choose one:
+   - **Neon** (Recommended): [neon.tech](https://neon.tech) - Free PostgreSQL serverless
+   - **Railway**: [railway.app](https://railway.app) - PostgreSQL managed
+   - **AWS RDS**: Production-grade managed PostgreSQL
+
+3. **Run Deployment Setup**:
+   ```bash
+   bash vercel-setup.sh
+   ```
+
+4. **Set Environment Variables**: See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)
+
+5. **Deploy**:
+   ```bash
+   git push origin main  # Automatic deployment
+   # or
+   vercel --prod
+   ```
+
+### Architecture
+
+- **Runtime**: Python 3.13 Serverless Functions
+- **Server**: Gunicorn WSGI
+- **Static Files**: WhiteNoise CDN
+- **Database**: PostgreSQL (managed)
+- **Media**: Local storage or AWS S3 (optional)
+
+For detailed setup instructions, see **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)**
 
 *(Note: When `DEBUG=False`, the app automatically enforces strict HTTPS/SSL security headers and switches to WhiteNoise for static file serving.)*
