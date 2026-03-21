@@ -4,7 +4,7 @@
   "outputDirectory": "staticfiles",
   "functions": {
     "api/wsgi.py": {
-      "runtime": "python3.13"
+      "runtime": "@vercel/python"
     }
   },
   "routes": [
