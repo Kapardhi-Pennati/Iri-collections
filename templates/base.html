@@ -13,6 +13,9 @@
 </head>
 
 <body>
+    <!-- Mobile Menu Overlay -->
+    <div class="menu-overlay" id="menu-overlay"></div>
+
     <!-- Navigation -->
     <nav class="navbar" id="navbar">
         <div class="container">
@@ -21,33 +24,15 @@
             <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
 
             <ul class="nav-links" id="nav-links">
+                <li class="mobile-only" style="display: none; padding-bottom: var(--space-xl);"><a href="/" class="navbar-brand">Iri</a></li>
                 <li><a href="/">Home</a></li>
                 <li><a href="/catalog/">Shop</a></li>
-
-                <!-- Auth links (shown when logged out) -->
-                <li id="auth-links">
-                    <a href="/login/">Login</a>
-                </li>
-
-                <!-- Admin link -->
-                <li id="admin-link" class="hidden">
-                    <a href="/admin-dashboard/">Dashboard</a>
-                </li>
-
-                <!-- Cart icon -->
-                <li>
-                    <a href="/cart/" class="nav-icon" title="Cart">
-                        🛒 <span class="cart-badge" id="cart-count">0</span>
-                    </a>
-                </li>
-
-                <!-- User menu (shown when logged in) -->
+                <li id="auth-links"><a href="/login/">Login</a></li>
+                <li id="admin-link" class="hidden"><a href="/admin-dashboard/">Dashboard</a></li>
+                <li><a href="/cart/">Cart <span class="cart-badge" id="cart-count">0</span></a></li>
                 <li id="user-menu" class="nav-user-menu hidden">
-                    <a href="#" class="nav-icon">👤 <span class="user-name"></span></a>
-                    <div class="nav-dropdown">
-                        <a href="/orders/">My Orders</a>
-                        <a href="#" onclick="logout(); return false;">Logout</a>
-                    </div>
+                    <a href="/orders/">My Orders</a>
+                    <a href="#" onclick="logout(); return false;">Logout</a>
                 </li>
             </ul>
         </div>

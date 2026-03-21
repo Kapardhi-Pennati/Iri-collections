@@ -354,7 +354,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Mobile nav toggle
     const toggle = document.getElementById('nav-toggle');
     const links = document.getElementById('nav-links');
-    if (toggle && links) {
-        toggle.addEventListener('click', () => links.classList.toggle('open'));
+    const overlay = document.getElementById('menu-overlay');
+
+    if (toggle && links && overlay) {
+        const toggleMenu = () => {
+            links.classList.toggle('open');
+            overlay.classList.toggle('active');
+            document.body.style.overflow = links.classList.contains('open') ? 'hidden' : '';
+        };
+
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        overlay.addEventListener('click', toggleMenu);
+
+        // Close on link click
+        links.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (links.classList.contains('open')) toggleMenu();
+            });
+        });
     }
 });
