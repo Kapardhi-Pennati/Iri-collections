@@ -316,8 +316,12 @@ if not EMAIL_HOST_PASSWORD and not DEBUG:
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
 # ✅ Use WhiteNoise for efficient static file serving
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Using CompressedStaticFilesStorage (without manifest) is more reliable on Vercel
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+WHITENOISE_USE_FINDERS = True  # Look in STATICFILES_DIRS if not found in STATIC_ROOT
+WHITENOISE_AUTOREFRESH = DEBUG  # refresh files in dev mode
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
