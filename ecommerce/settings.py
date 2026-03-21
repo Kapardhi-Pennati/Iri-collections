@@ -7,6 +7,7 @@ import os
 import logging
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -96,7 +97,22 @@ WSGI_APPLICATION = "ecommerce.wsgi.application"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Supports PostgreSQL for production, SQLite for development
-if os.getenv("DB_ENGINE"):
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=int(os.getenv("DB_CONN_MAX_AGE", "600")),
+            conn_health_checks=True,
+        )
+    }
+    # ✅ Always use SSL in production if using PostgreSQL
+    if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+        DATABASES["default"]["OPTIONS"] = {
+            "sslmode": os.getenv("DB_SSLMODE", "prefer"),
+        }
+elif os.getenv("DB_ENGINE"):
     DATABASES = {
         "default": {
             "ENGINE": os.getenv("DB_ENGINE"),

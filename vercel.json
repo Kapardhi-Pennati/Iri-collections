@@ -1,14 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "SECRET_KEY": "@secret_key",
-    "DEBUG": "false",
-    "ALLOWED_HOSTS": "@allowed_hosts",
-    "DATABASE_URL": "@database_url",
-    "RAZORPAY_KEY_ID": "@razorpay_key_id",
-    "RAZORPAY_KEY_SECRET": "@razorpay_key_secret",
-    "CORS_ALLOWED_ORIGINS": "@cors_allowed_origins"
-  },
   "buildCommand": "python manage.py collectstatic --no-input && python manage.py migrate",
   "outputDirectory": "staticfiles",
   "functions": {
@@ -32,10 +23,5 @@
       "src": "/(.*)",
       "dest": "/api/wsgi.py"
     }
-  ],
-  "git": {
-    "deploymentEnabled": {
-      "master": true
-    }
-  }
+  ]
 }
