@@ -309,7 +309,18 @@ if not EMAIL_HOST_PASSWORD and not DEBUG:
     logger = logging.getLogger(__name__)
     logger.warning("⚠️  EMAIL_HOST_PASSWORD not configured. Email features will fail.")
 
-# ... (rest of the file) ...
+# ─────────────────────────────────────────────────────────────────────────────
+# STATIC & MEDIA FILES (WhiteNoise)
+# ─────────────────────────────────────────────────────────────────────────────
+
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+# ✅ Use WhiteNoise for efficient static file serving
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAYMENTS (RAZORPAY)
