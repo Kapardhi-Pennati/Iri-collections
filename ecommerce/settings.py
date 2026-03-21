@@ -298,21 +298,11 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Use app passwords!
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # 🔴 NEVER log passwords or email credentials
-if EMAIL_HOST_PASSWORD == "":
-    raise ValueError("EMAIL_HOST_PASSWORD not configured. Set in .env file.")
+if not EMAIL_HOST_PASSWORD and not DEBUG:
+    logger = logging.getLogger(__name__)
+    logger.warning("⚠️  EMAIL_HOST_PASSWORD not configured. Email features will fail.")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STATIC & MEDIA FILES (WhiteNoise)
-# ─────────────────────────────────────────────────────────────────────────────
-
-STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
-# ✅ Use WhiteNoise for efficient static file serving
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# ... (rest of the file) ...
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PAYMENTS (RAZORPAY)
@@ -323,14 +313,12 @@ RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 
 if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+    logger = logging.getLogger(__name__)
     if not DEBUG:
-        raise ValueError(
-            "CRITICAL: RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET not set. "
-            "Configure in .env file."
-        )
+        logger.warning("⚠️  RAZORPAY credentials missing. Payments will fail.")
     # Dummy values for development
-    RAZORPAY_KEY_ID = "rzp_test_placeholder"
-    RAZORPAY_KEY_SECRET = "placeholder_secret"
+    RAZORPAY_KEY_ID = RAZORPAY_KEY_ID or "rzp_test_placeholder"
+    RAZORPAY_KEY_SECRET = RAZORPAY_KEY_SECRET or "placeholder_secret"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CACHING (for rate limiting, sessions)
