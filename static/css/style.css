@@ -684,6 +684,26 @@
 }
 
 /* Responsiveness Media Queries - Hero */
+@media (orientation: portrait) {
+    .hero-image-premium {
+        display: none !important;
+    }
+    
+    .hero .container {
+        grid-template-columns: 1fr !important;
+        text-align: center;
+    }
+    
+    .hero-content {
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .hero-buttons {
+        justify-content: center;
+    }
+}
+
 @media (max-width: 1024px) {
     .hero .container {
         grid-template-columns: 1fr;
