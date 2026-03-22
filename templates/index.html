@@ -15,95 +15,91 @@
                 <span class="bold">Iri Collections</span>
                 <span class="italic-thin">Shop our Collections here</span>
             </h1>
-            <p>Discover our curated collection of jewelry — from exquisite gold necklaces to dazzling trendy earrings.</p>
+            <p>Discover our curated collection of jewelry — from exquisite gold necklaces to dazzling trendy earrings.
+            </p>
             <div class="hero-buttons">
                 <a href="/catalog/" class="btn btn-premium">Explore Collection</a>
                 <a href="/catalog/?featured=true" class="btn btn-outline-gold">Featured Pieces</a>
             </div>
         </div>
-        <div class="hero-image-premium">
-            <img src="{% static 'media/hero-jewelry.png' %}" alt="Jewelry Collection" onerror="this.src='https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=800'">
-        </div>
-    </div>
-</section>
 
-<!-- Featured Products -->
-<section class="section">
-    <div class="container">
-        <div class="section-header">
-            <h2>Featured <span class="text-gold">Pieces</span></h2>
-            <div class="section-divider"></div>
-        </div>
-        <div class="grid-products" id="featured-products">
-            <!-- Populated by JS -->
-            <div class="page-loader">
-                <div class="spinner"></div>
+        <!-- Featured Products -->
+        <section class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Featured <span class="text-gold">Pieces</span></h2>
+                    <div class="section-divider"></div>
+                </div>
+                <div class="grid-products" id="featured-products">
+                    <!-- Populated by JS -->
+                    <div class="page-loader">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <div class="text-center mt-2">
+                    <a href="/catalog/" class="btn btn-secondary">View All Products</a>
+                </div>
             </div>
-        </div>
-        <div class="text-center mt-2">
-            <a href="/catalog/" class="btn btn-secondary">View All Products</a>
-        </div>
-    </div>
-</section>
+        </section>
 
-<!-- Categories Section -->
-<section class="section" style="background: var(--bg-secondary);">
-    <div class="container">
-        <div class="section-header">
-            <h2>Shop by <span class="text-gold">Category</span></h2>
-            <div class="section-divider"></div>
-        </div>
-        <div class="grid-products" id="categories-grid">
-            <!-- Populated by JS -->
-        </div>
-    </div>
-</section>
+        <!-- Categories Section -->
+        <section class="section" style="background: var(--bg-secondary);">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Shop by <span class="text-gold">Category</span></h2>
+                    <div class="section-divider"></div>
+                </div>
+                <div class="grid-products" id="categories-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </section>
 
-{% endblock %}
+        {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        // Load featured products
-        try {
-            const data = await API.get('/store/products/?featured=true');
-            const container = document.getElementById('featured-products');
-            if (data && data.results && data.results.length > 0) {
-                container.innerHTML = data.results.map(p => productCardHTML(p)).join('');
-                initLazyLoading();
-            } else {
-                // Fallback: load all products  
-                const allData = await API.get('/store/products/');
-                if (allData && allData.results) {
-                    container.innerHTML = allData.results.slice(0, 4).map(p => productCardHTML(p)).join('');
-                    initLazyLoading();
+        {% block extra_js %}
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                // Load featured products
+                try {
+                    const data = await API.get('/store/products/?featured=true');
+                    const container = document.getElementById('featured-products');
+                    if (data && data.results && data.results.length > 0) {
+                        container.innerHTML = data.results.map(p => productCardHTML(p)).join('');
+                        initLazyLoading();
+                    } else {
+                        // Fallback: load all products  
+                        const allData = await API.get('/store/products/');
+                        if (allData && allData.results) {
+                            container.innerHTML = allData.results.slice(0, 4).map(p => productCardHTML(p)).join('');
+                            initLazyLoading();
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to load products:', err);
                 }
-            }
-        } catch (err) {
-            console.error('Failed to load products:', err);
-        }
 
-        // Load categories
-        try {
-            const cats = await API.get('/store/categories/');
-            const catGrid = document.getElementById('categories-grid');
-            if (cats && cats.length > 0) {
-                catGrid.innerHTML = cats.map(cat => `
+                // Load categories
+                try {
+                    const cats = await API.get('/store/categories/');
+                    const catGrid = document.getElementById('categories-grid');
+                    if (cats && cats.length > 0) {
+                        catGrid.innerHTML = cats.map(cat => `
                 <a href="/catalog/?category=${cat.slug}" class="card feature-card" style="cursor:pointer; text-decoration:none;">
                     <div class="feature-icon">
                         ${{
-                        'Necklaces': '📿', 'Earrings': '✨', 'Bracelets': '💫',
-                        'Rings': '💍', 'Anklets': '🦶'
-                    }[cat.name] || '💎'}
+                                'Necklaces': '📿', 'Earrings': '✨', 'Bracelets': '💫',
+                                'Rings': '💍', 'Anklets': '🦶'
+                            }[cat.name] || '💎'}
                     </div>
                     <h3>${cat.name}</h3>
                     <p>${cat.product_count} pieces</p>
                 </a>
             `).join('');
-            }
-        } catch (err) {
-            console.error('Failed to load categories:', err);
-        }
-    });
-</script>
-{% endblock %}
+                    }
+                } catch (err) {
+                    console.error('Failed to load categories:', err);
+                }
+            });
+        </script>
+        {% endblock %}
