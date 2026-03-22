@@ -6,16 +6,23 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero">
+    <div class="hero-shader"></div>
     <div class="container">
         <div class="hero-content">
-            <div class="hero-tag">New Collection 2026</div>
-            <h1>This is <span class="text-gold">Iri Collections</span> Shop our Collections here</h1>
-            <p>Discover our curated collection of jewelry — from exquisite gold necklaces to dazzling
-                trendy earrings.</p>
+            <div class="hero-badge">✨ New Collection 2026</div>
+            <h1 class="hero-title">
+                <span class="thin">This is</span>
+                <span class="bold">Iri Collections</span>
+                <span class="italic-thin">Shop our Collections here</span>
+            </h1>
+            <p>Discover our curated collection of jewelry — from exquisite gold necklaces to dazzling trendy earrings.</p>
             <div class="hero-buttons">
-                <a href="/catalog/" class="btn btn-primary btn-lg">Explore Collection</a>
-                <a href="/catalog/?featured=true" class="btn btn-secondary btn-lg">Featured Pieces</a>
+                <a href="/catalog/" class="btn btn-premium">Explore Collection</a>
+                <a href="/catalog/?featured=true" class="btn btn-outline-gold">Featured Pieces</a>
             </div>
+        </div>
+        <div class="hero-image-premium">
+            <img src="{% static 'media/hero-jewelry.png' %}" alt="Jewelry Collection" onerror="this.src='https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&q=80&w=800'">
         </div>
     </div>
 </section>

@@ -29,6 +29,12 @@
      --border: #E5E5E5;
      --border-strong: #CCCCCC;
 
+    /* Premium Accents */
+    --gold: #A8863A;
+    --gold-light: #C5A059;
+    --gold-glow: rgba(168, 134, 58, 0.2);
+    --gold-gradient: linear-gradient(135deg, #A8863A 0%, #D4AF37 100%);
+
      /* Typography */
      --font-display: 'Funnel Sans', 'Helvetica Neue', Arial, sans-serif;
      --font-body: 'Funnel Sans', 'Helvetica Neue', Arial, sans-serif;
@@ -52,7 +58,7 @@
      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
-     --shadow-glow: 0 0 20px rgba(0, 0, 0, 0.05);
+     --shadow-glow: 0 0 20px rgba(168, 134, 58, 0.1);
 
      /* Transitions */
      --transition-fast: 150ms ease;
@@ -504,6 +510,228 @@
      font-weight: 600;
  }
 
+ /* ─── Premium Light Responsive Hero Section ─────────────────── */
+.hero {
+    position: relative;
+    min-height: 85vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    background: #FFFFFF;
+    color: var(--text-primary);
+    padding: var(--space-3xl) 0;
+}
+
+.hero-shader {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: 
+        radial-gradient(circle at 15% 30%, rgba(168, 134, 58, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 70%, rgba(168, 134, 58, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, #FFFFFF 0%, transparent 100%);
+}
+
+.hero-shader::after {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: radial-gradient(circle at center, rgba(168, 134, 58, 0.1) 0%, transparent 60%);
+    animation: shaderMove 25s infinite alternate-reverse ease-in-out;
+    filter: blur(80px);
+}
+
+@keyframes shaderMove {
+    0% { transform: translate(-5%, -5%) scale(1); }
+    100% { transform: translate(5%, 5%) scale(1.15); }
+}
+
+.hero .container {
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1.3fr 0.7fr;
+    align-items: center;
+    gap: var(--space-3xl);
+    width: 100%;
+}
+
+.hero-content {
+    text-align: left;
+    max-width: 800px;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-2xl);
+    color: var(--gold);
+    box-shadow: var(--shadow-sm);
+}
+
+.hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    line-height: 1.05;
+    margin-bottom: var(--space-xl);
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+}
+
+.hero-title span {
+    display: block;
+}
+
+.hero-title .thin {
+    font-weight: 200;
+    color: var(--gold);
+}
+
+.hero-title .bold {
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.hero-title .italic-thin {
+    font-weight: 200;
+    font-style: italic;
+    font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.hero p {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-width: 540px;
+    margin-bottom: var(--space-3xl);
+}
+
+.hero-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    justify-content: flex-start;
+}
+
+.btn-premium {
+    background: var(--text-primary);
+    color: #FFFFFF;
+    border: none;
+    padding: 1.1rem 2.8rem;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.btn-premium:hover {
+    transform: translateY(-4px);
+    background: var(--gold);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-outline-gold {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 1.1rem 2.8rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-base);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.btn-outline-gold:hover {
+    background: var(--gold);
+    color: #FFFFFF;
+}
+
+.hero-image-premium {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hero-image-premium img {
+    max-width: 120%;
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.1));
+    animation: floatLight 8s ease-in-out infinite;
+    transform-origin: center;
+}
+
+@keyframes floatLight {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+/* Responsiveness Media Queries - Hero */
+@media (max-width: 1024px) {
+    .hero .container {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: var(--space-xl);
+    }
+
+    .hero-content {
+        text-align: center;
+        margin: 0 auto;
+    }
+
+    .hero-buttons {
+        justify-content: center;
+    }
+
+    .hero-image-premium {
+        order: -1;
+        margin-bottom: var(--space-xl);
+    }
+
+    .hero-image-premium img {
+        max-width: 70%;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero {
+        min-height: auto;
+        padding: var(--space-2xl) 0;
+    }
+
+    .hero-title {
+        font-size: clamp(2.5rem, 12vw, 4rem);
+        margin-bottom: var(--space-md);
+    }
+
+    .hero p {
+        margin-bottom: var(--space-2xl);
+    }
+
+    .btn-premium, .btn-outline-gold {
+        width: 100%;
+        max-width: 320px;
+        padding: 1rem 2rem;
+    }
+}
+
  /* ─── Grid Layouts ──────────────────────────────────────────── */
  .grid-products {
      display: grid;
@@ -527,83 +755,6 @@
      display: grid;
      grid-template-columns: repeat(4, 1fr);
      gap: var(--space-xl);
- }
-
- /* ─── Hero Section ──────────────────────────────────────────── */
- .hero {
-     position: relative;
-     min-height: 85vh;
-     display: flex;
-     align-items: center;
-     overflow: hidden;
-     background: var(--bg-secondary);
- }
-
- .hero::before {
-     display: none;
- }
-
- .hero-content {
-     position: relative;
-     z-index: 1;
-     max-width: 800px;
-     margin: 0 auto;
-     text-align: center;
- }
-
- .hero-tag {
-     display: inline-flex;
-     align-items: center;
-     gap: var(--space-sm);
-     background: transparent;
-     border: 1px solid var(--text-primary);
-     color: var(--text-primary);
-     padding: 0.4rem 1.2rem;
-     border-radius: var(--radius-full);
-     font-size: 0.8rem;
-     font-weight: 500;
-     letter-spacing: 0.06em;
-     text-transform: uppercase;
-     margin-bottom: var(--space-xl);
-     animation: fadeInUp 0.8s ease-out;
- }
-
- .hero h1 {
-     font-family: var(--font-display);
-     font-size: clamp(2.5rem, 5vw, 4rem);
-     font-weight: 700;
-     line-height: 1.15;
-     margin-bottom: var(--space-lg);
-     animation: fadeInUp 0.8s ease-out 0.1s both;
- }
-
- .hero h1 .text-gold {
-     color: var(--text-primary);
- }
-
- .hero p {
-     font-size: 1.15rem;
-     color: var(--text-secondary);
-     line-height: 1.7;
-     margin-bottom: var(--space-2xl);
-     animation: fadeInUp 0.8s ease-out 0.2s both;
- }
-
- .hero-buttons {
-     display: flex;
-     gap: var(--space-md);
-     justify-content: center;
-     animation: fadeInUp 0.8s ease-out 0.3s both;
- }
-
- .hero-image {
-     position: absolute;
-     right: -5%;
-     top: 50%;
-     transform: translateY(-50%);
-     width: 45%;
-     opacity: 0.15;
-     pointer-events: none;
  }
 
  /* ─── Section Headers ───────────────────────────────────────── */
@@ -1586,14 +1737,6 @@
          background: var(--bg-secondary);
          border-bottom: 1px solid var(--border);
          padding: var(--space-lg);
-     }
-
-     .hero {
-         min-height: 70vh;
-     }
-
-     .hero-image {
-         display: none;
      }
 
      .grid-products {
