@@ -2,7 +2,7 @@
 
 A premium, full-featured jewelry e-commerce platform built with Django, Django REST Framework, and a custom high-performance vanilla JavaScript frontend.
 
-## 🛡️ Enterprise Security Hardening
+## Enterprise Security Hardening
 The platform has been hardened with a production-grade defensive security layer:
 - **Secure Authentication**: Argon2 password hashing, cryptographically secure OTPs (`secrets`), and JWT session management.
 - **Brute-Force Protection**: Account lockout (1 hour after 5 failed attempts) and endpoint-level throttling.
@@ -10,13 +10,13 @@ The platform has been hardened with a production-grade defensive security layer:
 - **Infrastructure**: Strategic HTTP security headers (HSTS, CSP, X-Frame-Options), strict CSRF/CORS whitelisting, and secure cookie policies.
 - **Audit Trail**: Detailed security-sensitive event logging in `logs/audit.log`.
 
-## 📦 Features
-- **Premium Design**: Dark theme luxury aesthetic utilizing `Bodoni Moda` and `Montserrat` typography.
+## Features
+- **Premium Design**: light Gold theme luxury aesthetic utilizing `Sans Funnel` typography.
 - **Robust E-Commerce**: Product catalog, cart management, atomic order transactions with row-level locking.
 - **Razorpay Integration**: Full UPI and Card payment gateway integration with safe webhook handling.
 - **Printable Invoices**: Native browser-optimized print stylesheets for billing.
 
-## 🛠️ Local Development Setup
+## Local Development Setup
 
 1. **Install dependencies**:
    ```bash
@@ -28,7 +28,7 @@ The platform has been hardened with a production-grade defensive security layer:
    ```
    SECRET_KEY=your_secret_key
    DEBUG=True
-   ALLOWED_HOSTS=127.0.0.1,localhost
+   ALLOWED_HOSTS= localhost
    RAZORPAY_KEY_ID=your_test_key
    RAZORPAY_KEY_SECRET=your_test_secret
    ```
@@ -50,7 +50,7 @@ The platform has been hardened with a production-grade defensive security layer:
    python manage.py runserver
    ```
 
-## 🚀 Production Deployment (Vercel)
+## Production Deployment (Vercel)
 
 The repository is configured for serverless deployment on Vercel with automatic scaling and zero-downtime deploys.
 
@@ -61,21 +61,19 @@ The repository is configured for serverless deployment on Vercel with automatic 
    npm install -g vercel
    ```
 
-2. **Configure Database**: Choose one:
-   - **Neon** (Recommended): [neon.tech](https://neon.tech) - Free PostgreSQL serverless
-   - **Railway**: [railway.app](https://railway.app) - PostgreSQL managed
-   - **AWS RDS**: Production-grade managed PostgreSQL
+2. **Configure Database**:
+   **Neon**: [neon.tech](https://neon.tech) - Free PostgreSQL serverless
 
 3. **Run Deployment Setup**:
    ```bash
    bash vercel-setup.sh
    ```
 
-4. **Set Environment Variables**: See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)
+4. **Set Environment Variables**:
 
 5. **Deploy**:
    ```bash
-   git push origin main  # Automatic deployment
+   git push origin main  
    # or
    vercel --prod
    ```
@@ -83,11 +81,8 @@ The repository is configured for serverless deployment on Vercel with automatic 
 ### Architecture
 
 - **Runtime**: Python 3.13 Serverless Functions
-- **Server**: Gunicorn WSGI
+- **Server**: Vercel wsgi
 - **Static Files**: WhiteNoise CDN
 - **Database**: PostgreSQL (managed)
 - **Media**: Local storage or AWS S3 (optional)
-
-For detailed setup instructions, see **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)**
-
 *(Note: When `DEBUG=False`, the app automatically enforces strict HTTPS/SSL security headers and switches to WhiteNoise for static file serving.)*
