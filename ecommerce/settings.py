@@ -18,18 +18,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # CRITICAL: SECRET KEY & DEBUG MODE
 # ─────────────────────────────────────────────────────────────────────────────
 
+# 🔴 SECURITY REQUIREMENT: DEBUG must be False in production
+DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+
 # 🔴 SECURITY REQUIREMENT: SECRET_KEY MUST be set in environment
 # Never hardcode secrets; always use .env file in production
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY or SECRET_KEY == "django-insecure-change-me-in-production":
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
+
+if not DEBUG and (not SECRET_KEY or SECRET_KEY == "django-insecure-change-me-in-production"):
     raise ValueError(
-        "CRITICAL: SECRET_KEY not set or using unsafe default. "
-        "Set SECRET_KEY environment variable to a cryptographically secure random string.\n"
+        "CRITICAL: SECRET_KEY not set or using unsafe default in production. "
+        "Set SECRET_KEY environment variable in your Vercel Project Settings.\n"
         "Generate one: python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\""
     )
 
-# 🔴 SECURITY REQUIREMENT: DEBUG must be False in production
-DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
 if DEBUG:
     logger = logging.getLogger(__name__)
     logger.warning("⚠️  DEBUG MODE ENABLED - Never use in production!")

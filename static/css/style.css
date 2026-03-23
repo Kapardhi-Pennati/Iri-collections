@@ -1787,10 +1787,101 @@
      }
 
      .stat-cards {
-         grid-template-columns: 1fr;
-     }
+        grid-template-columns: 1fr;
+    }
 
-     .checkout-steps {
-         gap: var(--space-md);
-     }
- }
+    .checkout-steps {
+        gap: var(--space-md);
+    }
+}
+
+/* ─── Admin Dashboard Responsive ───────────────────────────── */
+.admin-mobile-header {
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) var(--space-xl);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+}
+
+.admin-menu-toggle {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    padding: var(--space-xs);
+    cursor: pointer;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-sidebar-close {
+    display: none;
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    padding: var(--space-xs);
+    cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+    .admin-layout {
+        grid-template-columns: 1fr !important;
+        display: block !important;
+    }
+
+    .admin-mobile-header {
+        display: flex;
+    }
+
+    .admin-sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        bottom: 0;
+        width: 280px;
+        z-index: 2000;
+        transition: left var(--transition-base);
+        display: flex !important;
+        flex-direction: column;
+        background: var(--bg-primary);
+        box-shadow: var(--shadow-lg);
+        border-right: 1px solid var(--border);
+    }
+
+    .admin-sidebar.active {
+        left: 0;
+    }
+
+    .admin-sidebar-close {
+        display: block;
+        margin-bottom: var(--space-2xl);
+    }
+
+    .admin-main {
+        padding: var(--space-lg);
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+        gap: var(--space-lg) !important;
+    }
+}
+
+.admin-table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-xl);
+}
+
+.admin-table-responsive .admin-table {
+    min-width: 800px;
+}

@@ -11,9 +11,18 @@
 
 {% block content %}
 <div class="admin-layout">
+    <!-- Mobile Header -->
+    <div class="admin-mobile-header">
+        <div style="font-family:var(--font-display); font-weight:700; color:var(--text-primary);">IRI <span class="text-gold">ADMIN</span></div>
+        <button class="admin-menu-toggle" onclick="toggleAdminSidebar()">☰</button>
+    </div>
+
     <!-- Sidebar -->
-    <aside class="admin-sidebar">
-        <div style="font-family:var(--font-display); font-size:1.1rem; color:var(--gold); margin-bottom:var(--space-2xl);">Admin Panel</div>
+    <aside class="admin-sidebar" id="admin-sidebar">
+        <div class="sidebar-header">
+            <div style="font-family:var(--font-display); font-size:1.1rem; color:var(--gold); margin-bottom:var(--space-2xl);">Admin Panel</div>
+            <button class="admin-sidebar-close" onclick="toggleAdminSidebar()">✕</button>
+        </div>
         <ul class="admin-sidebar-nav">
             <li><a href="#" onclick="showSection('overview')" class="active" id="nav-overview">📊 Overview</a></li>
             <li><a href="#" onclick="showSection('products')" id="nav-products">📦 Products</a></li>
@@ -38,7 +47,7 @@
                 <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-label">Low Stock</div><div class="stat-value" id="stat-lowstock">—</div></div>
             </div>
 
-            <div style="display:grid; grid-template-columns:2fr 1fr; gap:var(--space-xl);">
+            <div class="charts-grid" style="display:grid; grid-template-columns:2fr 1fr; gap:var(--space-xl); margin-bottom:var(--space-xl);">
                 <div class="chart-container">
                     <h3>Revenue (Last 30 Days)</h3>
                     <canvas id="revenue-chart" height="240"></canvas>
@@ -61,7 +70,7 @@
                 <h2 style="font-family:var(--font-display);">Manage <span class="text-gold">Products</span></h2>
                 <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
             </div>
-            <div style="overflow-x:auto;">
+            <div class="admin-table-responsive">
                 <table class="admin-table" id="products-table">
                     <thead>
                         <tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Actions</th></tr>
@@ -74,7 +83,7 @@
         <!-- Section: Orders -->
         <div id="section-orders" class="hidden">
             <h2 style="font-family:var(--font-display); margin-bottom:var(--space-xl);">Manage <span class="text-gold">Orders</span></h2>
-            <div style="overflow-x:auto;">
+            <div class="admin-table-responsive">
                 <table class="admin-table" id="orders-table">
                     <thead>
                         <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
@@ -111,7 +120,14 @@
                 <div class="form-group"><label>Stock</label><input type="number" id="pf-stock" required></div>
                 <div class="form-group"><label>Category</label><select id="pf-category" required></select></div>
             </div>
-            <div class="form-group"><label>Image URL</label><input type="url" id="pf-image" placeholder="https://..."></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md); align-items: end;">
+                <div class="form-group"><label>Image URL</label><input type="url" id="pf-image" placeholder="https://..."></div>
+                <div class="form-group"><label>Or Upload Image</label><input type="file" id="pf-image-file" accept="image/*"></div>
+            </div>
+            <div id="pf-image-preview" style="margin-bottom: var(--space-md); display: none;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Preview</label>
+                <img src="" alt="Preview" style="max-width: 100px; max-height: 100px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border);">
+            </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
                 <div class="form-group"><label>Material</label><input type="text" id="pf-material"></div>
                 <div class="form-group"><label>Weight</label><input type="text" id="pf-weight" placeholder="e.g. 5.2g"></div>
@@ -215,6 +231,10 @@ function showSection(name) {
         document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
         document.getElementById(`nav-${s}`).classList.toggle('active', s === name);
     });
+}
+
+function toggleAdminSidebar() {
+    document.getElementById('admin-sidebar').classList.toggle('active');
 }
 
 function closeModal(id) {
@@ -369,6 +389,13 @@ function openProductModal(product = null) {
     const form = document.getElementById('product-form');
     form.reset();
     document.getElementById('product-edit-id').value = '';
+    
+    // Reset preview
+    const preview = document.getElementById('pf-image-preview');
+    const img = preview.querySelector('img');
+    preview.style.display = 'none';
+    img.src = '';
+    document.getElementById('pf-image-file').value = '';
 
     if (product) {
         document.getElementById('product-modal-title').textContent = 'Edit Product';
@@ -383,6 +410,14 @@ function openProductModal(product = null) {
         document.getElementById('pf-weight').value = product.weight || '';
         document.getElementById('pf-active').checked = product.is_active;
         document.getElementById('pf-featured').checked = product.is_featured;
+
+        // Show existing image preview if available
+        const existingImg = product.display_image || product.image_url;
+        if (existingImg) {
+            img.src = existingImg;
+            preview.style.display = 'block';
+        }
+
         setTimeout(() => {
             document.getElementById('pf-category').value = product.category;
         }, 200);
@@ -392,35 +427,61 @@ function openProductModal(product = null) {
     openModal('product-modal');
 }
 
+// Image preview logic
+document.getElementById('pf-image-file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('pf-image-preview');
+    const img = preview.querySelector('img');
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
+
 document.getElementById('product-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const editId = document.getElementById('product-edit-id').value;
-    const data = {
-        name: document.getElementById('pf-name').value,
-        description: document.getElementById('pf-desc').value,
-        price: document.getElementById('pf-price').value,
-        compare_price: document.getElementById('pf-compare').value || null,
-        stock: parseInt(document.getElementById('pf-stock').value),
-        category: parseInt(document.getElementById('pf-category').value),
-        image_url: document.getElementById('pf-image').value,
-        material: document.getElementById('pf-material').value,
-        weight: document.getElementById('pf-weight').value,
-        is_active: document.getElementById('pf-active').checked,
-        is_featured: document.getElementById('pf-featured').checked,
-    };
+    const btn = document.getElementById('product-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const formData = new FormData();
+    formData.append('name', document.getElementById('pf-name').value);
+    formData.append('description', document.getElementById('pf-desc').value);
+    formData.append('price', document.getElementById('pf-price').value);
+    const comparePrice = document.getElementById('pf-compare').value;
+    if (comparePrice) formData.append('compare_price', comparePrice);
+    formData.append('stock', document.getElementById('pf-stock').value);
+    formData.append('category', document.getElementById('pf-category').value);
+    formData.append('material', document.getElementById('pf-material').value);
+    formData.append('weight', document.getElementById('pf-weight').value);
+    formData.append('is_active', document.getElementById('pf-active').checked);
+    formData.append('is_featured', document.getElementById('pf-featured').checked);
+
+    const imageUrl = document.getElementById('pf-image').value;
+    if (imageUrl) formData.append('image_url', imageUrl);
+
+    const fileInput = document.getElementById('pf-image-file');
+    if (fileInput.files[0]) {
+        formData.append('image', fileInput.files[0]);
+    }
 
     let res;
     if (editId) {
         res = await API.request(`/store/admin/products/${editId}/`, {
             method: 'PUT',
-            body: JSON.stringify(data),
-            headers: { 'Content-Type': 'application/json' }
+            body: formData
         });
     } else {
         res = await API.request('/store/admin/products/', {
             method: 'POST',
-            body: JSON.stringify(data),
-            headers: { 'Content-Type': 'application/json' }
+            body: formData
         });
     }
 
@@ -432,6 +493,8 @@ document.getElementById('product-form').addEventListener('submit', async (e) => 
         const errData = await res?.json();
         Toast.error(JSON.stringify(errData) || 'Failed to save product.');
     }
+    btn.disabled = false;
+    btn.textContent = 'Save Product';
 });
 
 async function editProduct(id) {
