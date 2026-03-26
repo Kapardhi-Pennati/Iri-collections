@@ -1,127 +1,152 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Your Cart — Iri Collections{% endblock %}
+{% block title %}Shopping Bag — Iri Collections{% endblock %}
 
 {% block content %}
-<section class="section">
-    <div class="container">
-        <div class="section-header">
-            <h1 style="font-family: var(--font-display); font-size: 2.2rem;">Shopping <span
-                    class="text-gold">Cart</span></h1>
-            <div class="section-divider"></div>
-        </div>
-
-        <div id="cart-content">
-            <div class="page-loader">
-                <div class="spinner"></div>
-            </div>
-        </div>
+<main class="pt-24 pb-32 px-6 max-w-4xl mx-auto" id="cart-root">
+    <div class="flex items-center justify-center min-h-[60vh] opacity-20 italic">
+        Gathering items...
     </div>
-</section>
+</main>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     async function loadCart() {
         if (!API.isLoggedIn()) {
-            document.getElementById('cart-content').innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">🛒</div>
-                <h3>Your cart is waiting</h3>
-                <p>Please <a href="/login/">sign in</a> to view your cart</p>
-            </div>`;
+            renderEmpty("Please sign in to view your bag", "Sign In", "/login/");
             return;
         }
-
         try {
             const cart = await API.get('/store/cart/');
             renderCart(cart);
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (err) { console.error(err); }
+    }
+
+    function renderEmpty(msg = "Your bag is currently empty", btnText = "Explore Collections", btnLink = "/catalog/") {
+        document.getElementById('cart-root').innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                <span class="material-symbols-outlined text-6xl opacity-10 mb-8">auto_awesome</span>
+                <h2 class="serif text-3xl font-light text-on-surface mb-4">Bag Empty</h2>
+                <p class="font-body text-sm text-on-surface/40 mb-12 uppercase tracking-[0.2em] leading-relaxed max-w-sm mx-auto">${msg}</p>
+                <a href="${btnLink}" class="inline-block px-12 py-5 bg-primary text-white font-label text-[10px] font-bold uppercase tracking-[0.3em] rounded-sm hover:bg-primary-container transition-colors shadow-lg shadow-primary/10 transition-all active:scale-95">
+                    ${btnText}
+                </a>
+            </div>`;
     }
 
     function renderCart(cart) {
         if (!cart || !cart.items || cart.items.length === 0) {
-            document.getElementById('cart-content').innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">🛒</div>
-                <h3>Your cart is empty</h3>
-                <p>Discover our beautiful jewelry collection</p>
-                <a href="/catalog/" class="btn btn-primary mt-2">Start Shopping</a>
-            </div>`;
+            renderEmpty();
             return;
         }
 
         const itemsHTML = cart.items.map(item => {
             const p = item.product_detail;
-            const img = p.display_image || p.image_url || p.image || '';
-            const oos = item.is_out_of_stock;
-            const opacity = oos ? '0.5' : '1';
-            const priceDisplay = oos ? '<span style="color:red;font-weight:bold;">Out of Stock</span>' : formatPrice(p.price);
-            const subtotalDisplay = oos ? '<span style="color:var(--text-muted);">---</span>' : formatPrice(item.subtotal);
-            const qtyControl = oos ? 
-                `<span style="color:var(--text-muted); font-size:0.8rem;">Remove to continue</span>` :
-                `<div class="quantity-control" style="margin-bottom:0;">
-                    <button onclick="updateCartItem(${item.id}, ${item.quantity - 1})">−</button>
-                    <input type="number" value="${item.quantity}" min="0" max="${p.stock}" readonly style="width:50px;">
-                    <button onclick="updateCartItem(${item.id}, ${item.quantity + 1})">+</button>
-                </div>`;
+            const imgSrc = p.display_image || p.image_url || p.image || '';
+            const isOOS = item.is_out_of_stock;
+            const price = formatPrice(p.price);
+            const subtotal = formatPrice(item.subtotal);
 
             return `
-            <div class="cart-item fade-in" data-item-id="${item.id}" style="opacity:${opacity};">
-                <div class="cart-item-image">
-                    <a href="/product/${p.slug}/"><img src="${img}" alt="${p.name}"></a>
-                </div>
-                <div class="cart-item-info" style="flex:1;">
-                    <a href="/product/${p.slug}/" style="color:var(--text-primary);"><div class="cart-item-name">${p.name}</div></a>
-                    <div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:0.5rem;">${p.material || ''}</div>
-                    <div class="cart-item-price">${priceDisplay}</div>
-                    <div style="display:flex; align-items:center; gap:var(--space-md); margin-top:0.75rem;">
-                        ${qtyControl}
-                        <span class="cart-item-remove" onclick="removeCartItem(${item.id})">✕ Remove</span>
+                <div class="flex flex-col md:flex-row gap-8 group pb-12 border-b border-outline-variant/10 last:border-0 ${isOOS ? 'opacity-40' : ''}">
+                    <!-- Item Image -->
+                    <div class="w-full md:w-40 aspect-[4/5] bg-surface-container-low overflow-hidden relative cursor-pointer" onclick="window.location.href='/product/${p.slug}/'">
+                        <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                             src="${imgSrc}" alt="${escapeHTML(p.name)}">
+                        ${isOOS ? '<div class="absolute inset-0 bg-white/60 flex items-center justify-center font-label text-[8px] uppercase tracking-widest text-on-surface">Removed from Curation</div>' : ''}
+                    </div>
+
+                    <!-- Item Info -->
+                    <div class="flex-1 flex flex-col justify-between py-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-headline text-xl font-light text-on-surface tracking-wide cursor-pointer hover:text-primary transition-colors" onclick="window.location.href='/product/${p.slug}/'">
+                                    ${escapeHTML(p.name)}
+                                </h3>
+                                <p class="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface/50 mt-1">
+                                    ${escapeHTML(p.material || 'Premium Alloy')} / SKU: IRI-${String(item.id).padStart(4, '0')}
+                                </p>
+                            </div>
+                            <span class="font-headline text-lg font-light text-primary">${subtotal}</span>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-6">
+                            <!-- Qty Control -->
+                            ${!isOOS ? `
+                            <div class="flex items-center border border-outline-variant/30 px-3 py-1 gap-6">
+                                <button onclick="updateCartItem(${item.id}, ${item.quantity - 1})" class="text-on-surface/40 hover:text-on-surface transition-colors">
+                                    <span class="material-symbols-outlined text-sm">remove</span>
+                                </button>
+                                <span class="text-xs font-label w-4 text-center">${item.quantity}</span>
+                                <button onclick="updateCartItem(${item.id}, ${item.quantity + 1})" class="text-on-surface/40 hover:text-on-surface transition-colors">
+                                    <span class="material-symbols-outlined text-sm">add</span>
+                                </button>
+                            </div>
+                            ` : `<span class="text-[10px] text-error font-label uppercase tracking-widest font-bold">Piece unavailable</span>`}
+
+                            <!-- Actions -->
+                            <div class="flex gap-10">
+                                <button onclick="removeCartItem(${item.id})" class="font-label text-[10px] uppercase tracking-widest text-on-surface/40 hover:text-error transition-colors flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[16px]">delete</span> 
+                                    <span class="hidden md:inline">Remove</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div style="text-align:right; min-width:100px;">
-                    <div style="font-weight:700; color:var(--gold-light); font-size:1.1rem;">${subtotalDisplay}</div>
-                </div>
-            </div>`;
+            `;
         }).join('');
 
-        document.getElementById('cart-content').innerHTML = `
-        <div class="cart-layout">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-lg);">
-                    <span style="color:var(--text-secondary);">${cart.item_count} item${cart.item_count !== 1 ? 's' : ''} in your cart</span>
-                    <button class="btn btn-ghost btn-sm" onclick="clearCart()">Clear All</button>
-                </div>
+        const subtotal = formatPrice(cart.total);
+        const shipping = cart.total >= 20000 ? "Complimentary" : formatPrice(200);
+        const total = formatPrice(cart.total >= 20000 ? cart.total : cart.total + 200);
+
+        document.getElementById('cart-root').innerHTML = `
+            <div class="text-center mb-16 animate-fade-in">
+                <h2 class="font-headline text-3xl font-light tracking-tight text-on-surface">Shopping Bag</h2>
+                <p class="font-label text-[10px] uppercase tracking-[0.2em] mt-2 text-on-surface/60">${cart.item_count} Piece${cart.item_count !== 1 ? 's' : ''} Selected</p>
+            </div>
+
+            <!-- List -->
+            <div class="space-y-12">
                 ${itemsHTML}
             </div>
-            <div class="cart-summary">
-                <div class="cart-summary-card card-glass">
-                    <h3 style="font-family:var(--font-display); margin-bottom:var(--space-lg);">Order Summary</h3>
-                    <div class="cart-summary-row">
-                        <span>Subtotal</span>
-                        <span>${formatPrice(cart.total)}</span>
+
+            <!-- Summary -->
+            <section class="mt-24 pt-10 border-t border-outline-variant/20">
+                <div class="space-y-5 max-w-sm ml-auto">
+                    <div class="flex justify-between items-center">
+                        <span class="font-label text-[10px] uppercase tracking-widest text-on-surface/50">Subtotal</span>
+                        <span class="font-headline text-lg text-on-surface">${subtotal}</span>
                     </div>
-                
-                    <div class="cart-summary-row">
-                        <span>Shipping</span>
-                        <span style="color:var(--success);">${cart.total >= 1500 ? 'Free' : formatPrice(80)}</span>
+                    <div class="flex justify-between items-center">
+                        <span class="font-label text-[10px] uppercase tracking-widest text-on-surface/50">Secure Shipping & Insurance</span>
+                        <span class="font-label text-[10px] uppercase tracking-widest ${cart.total >= 20000 ? 'text-primary' : ''}">${shipping}</span>
                     </div>
-                    <div class="cart-summary-row total">
-                        <span>Total</span>
-                        <span>${formatPrice(cart.total >= 1500 ? cart.total : cart.total + 80)}</span>
+                    <div class="flex justify-between items-center pt-8 border-t border-outline-variant/10">
+                        <span class="font-label text-[11px] font-bold uppercase tracking-[0.3em] text-on-surface">Total Estimation</span>
+                        <span class="font-headline text-2xl font-light text-primary">${total}</span>
                     </div>
-                    ${cart.total < 1500 ? `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:var(--space-sm);">Add ${formatPrice(1500 - cart.total)} more for free shipping</p>` : ''}
-                    <a href="/checkout/" class="btn btn-primary btn-block btn-lg mt-2">Proceed to Checkout</a>
-                    <a href="/catalog/" class="btn btn-ghost btn-block btn-sm mt-1" style="text-transform:none;">← Continue Shopping</a>
+                </div>
+            </section>
+
+            <!-- CTA -->
+            <div class="mt-20 flex flex-col items-center gap-8">
+                <button onclick="window.location.href='/checkout/'" class="w-full py-5 bg-gradient-to-r from-primary to-primary-container text-white rounded-sm font-label text-xs font-bold uppercase tracking-[0.3em] shadow-lg shadow-primary/10 hover:opacity-90 transition-all active:scale-[0.98]">
+                    Proceed to Secure Checkout
+                </button>
+                <div class="p-8 bg-surface-container-low/50 rounded-sm text-center w-full">
+                    <span class="material-symbols-outlined text-primary mb-3">featured_seasonal_and_gifts</span>
+                    <h4 class="font-headline text-sm italic text-on-surface/80">Each piece arrives in our signature Iri gift box, finished with silk ribbon and a certificate of authenticity.</h4>
                 </div>
             </div>
-        </div>`;
+        `;
     }
 
     async function updateCartItem(itemId, newQty) {
+        if(newQty < 1) return removeCartItem(itemId);
         const res = await API.patch('/store/cart/', { item_id: itemId, quantity: newQty });
         if (res && res.ok) {
             renderCart(res.data);
@@ -134,16 +159,7 @@
     async function removeCartItem(itemId) {
         const res = await API.delete(`/store/cart/?item_id=${itemId}`);
         if (res && res.ok) {
-            Toast.success('Item removed');
-            renderCart(res.data);
-            updateCartCount();
-        }
-    }
-
-    async function clearCart() {
-        const res = await API.delete('/store/cart/');
-        if (res && res.ok) {
-            Toast.success('Cart cleared');
+            Toast.success('Removed from curation');
             renderCart(res.data);
             updateCartCount();
         }

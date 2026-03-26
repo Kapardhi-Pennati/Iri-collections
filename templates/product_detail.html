@@ -4,128 +4,180 @@
 {% block title %}Product — Iri Collections{% endblock %}
 
 {% block content %}
-<section class="section">
-    <div class="container">
-        <div id="product-detail-content">
-            <div class="page-loader"><div class="spinner"></div></div>
-        </div>
+<main class="pt-16 pb-24 md:pb-0" id="product-root">
+    <div class="flex items-center justify-center min-h-[60vh] opacity-20 italic">
+        Curating piece...
     </div>
-</section>
+</main>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-let productData = null;
-let selectedQuantity = 1;
+    let productData = null;
+    let selectedQuantity = 1;
 
-async function loadProduct() {
-    const slug = window.location.pathname.split('/product/')[1].replace('/', '');
-    try {
-        const product = await API.get(`/store/products/${slug}/`);
-        if (!product || product.detail) {
-            document.getElementById('product-detail-content').innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">😕</div>
-                    <h3>Product not found</h3>
-                    <p><a href="/catalog/" class="btn btn-secondary mt-1">Back to Shop</a></p>
-                </div>`;
+    async function loadProduct() {
+        const slug = window.location.pathname.split('/product/')[1].replace('/', '');
+        try {
+            const product = await API.get(`/store/products/${slug}/`);
+            if (!product || product.detail) {
+                renderError();
+                return;
+            }
+            productData = product;
+            document.title = `${product.name} — Iri Collections`;
+            renderProduct(product);
+        } catch (err) { console.error(err); }
+    }
+
+    function renderError() {
+        document.getElementById('product-root').innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                <span class="material-symbols-outlined text-6xl opacity-10 mb-8">sentiment_dissatisfied</span>
+                <h3 class="font-headline text-3xl font-light">Piece not found</h3>
+                <p class="font-body text-xs text-on-surface/40 mt-4 uppercase tracking-[0.2em] mb-12">The item may have been removed from our curation</p>
+                <a href="/catalog/" class="border border-on-surface/20 px-12 py-4 text-[10px] tracking-[0.4em] uppercase font-label hover:bg-on-surface hover:text-surface transition-all">Back to Collection</a>
+            </div>`;
+    }
+
+    function renderProduct(p) {
+        const imgSrc = p.display_image || p.image_url || p.image || '';
+        const price = formatPrice(p.price);
+        const isInWishlist = window.wishlistItems ? window.wishlistItems.has(p.id) : false;
+        
+        // Dynamic labels based on stock
+        let stockMsg = "Exquisite quality";
+        if (p.stock === 0) stockMsg = "Sold Out";
+        else if (p.stock < 5) stockMsg = `Only ${p.stock} units remaining`;
+
+        document.getElementById('product-root').innerHTML = `
+            <!-- Breadcrumbs -->
+            <nav class="px-6 py-8 md:px-12 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-on-surface/50 font-label">
+                <a class="hover:text-primary transition-colors" href="/catalog/">Collection</a>
+                <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+                <a class="hover:text-primary transition-colors" href="/catalog/?category=${p.category_slug || ''}">${p.category_name || 'Jewelry'}</a>
+                <span class="material-symbols-outlined text-[10px]">chevron_right</span>
+                <span class="text-on-surface">${escapeHTML(p.name)}</span>
+            </nav>
+
+            <section class="max-w-[1440px] mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
+                <!-- Image Gallery (Editorial) -->
+                <div class="lg:col-span-7 space-y-8">
+                    <div class="relative group aspect-[4/5] overflow-hidden bg-surface-container-low">
+                        <img alt="${escapeHTML(p.name)}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                             src="${imgSrc}">
+                        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                            <div class="w-1.5 h-1.5 rounded-full bg-on-surface"></div>
+                            <div class="w-1.5 h-1.5 rounded-full bg-on-surface/20"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Details -->
+                <div class="lg:col-span-5 space-y-10 lg:sticky lg:top-32 h-fit pb-32">
+                    <div class="space-y-4">
+                        <p class="text-[10px] font-label uppercase tracking-[0.2em] text-primary">${p.category_name || 'Iri Signature'}</p>
+                        <h2 class="text-4xl md:text-5xl font-headline font-light leading-tight tracking-tight">${escapeHTML(p.name)}</h2>
+                        <div class="flex items-center gap-4">
+                             <p class="text-xl font-body font-light text-on-surface-variant">${price}</p>
+                             ${p.compare_price ? `<p class="text-sm font-body line-through opacity-30">${formatPrice(p.compare_price)}</p>` : ''}
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <p class="text-sm leading-relaxed text-on-surface-variant font-body">
+                            ${escapeHTML(p.description || "A masterfully crafted piece designed to capture light and elegance. Each facet refined through generations of artisanal expertise.")}
+                        </p>
+                        <p class="text-[10px] font-label uppercase tracking-widest ${p.stock < 5 ? 'text-error font-bold' : 'text-primary/60'} animate-pulse">${stockMsg}</p>
+                    </div>
+
+                    <!-- CTA -->
+                    <div class="space-y-4 pt-4">
+                        ${p.stock > 0 ? `
+                        <div class="flex items-center border border-outline-variant/30 w-fit mb-4">
+                            <button onclick="changeQty(-1)" class="w-12 h-12 flex items-center justify-center hover:bg-surface-container transition-colors"> <span class="material-symbols-outlined text-sm">remove</span> </button>
+                            <input type="number" id="qty-input" value="1" min="1" max="${p.stock}" readonly class="w-12 text-center bg-transparent border-none text-xs font-label">
+                            <button onclick="changeQty(1)" class="w-12 h-12 flex items-center justify-center hover:bg-surface-container transition-colors"> <span class="material-symbols-outlined text-sm">add</span> </button>
+                        </div>
+                        <button onclick="addToCartDetail()" class="w-full h-14 bg-gradient-to-r from-primary to-primary-container text-on-primary font-label uppercase tracking-[0.15em] text-xs font-bold rounded-sm shadow-lg hover:opacity-90 transition-all active:scale-[0.98]">
+                            Add to Bag
+                        </button>
+                        <button onclick="buyNow()" class="w-full h-14 bg-on-surface text-surface font-label uppercase tracking-[0.15em] text-xs font-bold rounded-sm hover:opacity-90 transition-all active:scale-[0.98]">
+                            Secure Checkout
+                        </button>
+                        ` : `
+                        <button disabled class="w-full h-14 bg-on-surface/10 text-on-surface/40 font-label uppercase tracking-[0.15em] text-xs font-bold rounded-sm cursor-not-allowed">
+                            Out of Curation
+                        </button>
+                        `}
+                        
+                        <button id="btn-wishlist-${p.id}" onclick="toggleWishlist(${p.id})" class="w-full h-14 border border-outline-variant/30 text-on-surface font-label uppercase tracking-[0.15em] text-xs rounded-sm hover:bg-surface-container-low transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' ${isInWishlist ? '1' : '0'};">favorite</span>
+                            ${isInWishlist ? 'Saved to Wishlist' : 'Save to Wishlist'}
+                        </button>
+                    </div>
+
+                    <!-- Accordions -->
+                    <div class="pt-8 space-y-0">
+                        <details class="group py-6 border-t border-outline-variant/20">
+                            <summary class="flex justify-between items-center cursor-pointer list-none">
+                                <div class="flex items-center gap-4">
+                                    <span class="material-symbols-outlined font-light">diamond</span>
+                                    <span class="text-[11px] font-label uppercase tracking-widest">Product Details</span>
+                                </div>
+                                <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                            </summary>
+                            <div class="pt-6 pl-10 text-xs leading-loose text-on-surface-variant space-y-2">
+                                <p>Material: ${escapeHTML(p.material || 'Premium Alloy & Crystal')}</p>
+                                <p>Weight: ${escapeHTML(p.weight || 'Refined weight')}</p>
+                                <p>Craftmanship: Hand-finished Artisanal quality</p>
+                                <p>SKU: IRI-${String(p.id).padStart(4, '0')}</p>
+                            </div>
+                        </details>
+                        <details class="group py-6 border-t border-outline-variant/20">
+                            <summary class="flex justify-between items-center cursor-pointer list-none">
+                                <div class="flex items-center gap-4">
+                                    <span class="material-symbols-outlined font-light">local_shipping</span>
+                                    <span class="text-[11px] font-label uppercase tracking-widest">Shipping & Returns</span>
+                                </div>
+                                <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+                            </summary>
+                            <div class="pt-6 pl-10 text-xs leading-loose text-on-surface-variant">
+                                Complimentary secure express shipping on all orders over ₹20,000. 30-day returns accepted in original condition.
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </section>
+        `;
+    }
+
+    function changeQty(delta) {
+        const inp = document.getElementById('qty-input');
+        if(!inp) return;
+        let val = parseInt(inp.value) + delta;
+        if (val < 1) val = 1;
+        if (val > productData.stock) val = productData.stock;
+        inp.value = val;
+        selectedQuantity = val;
+    }
+
+    async function addToCartDetail() {
+        if(!productData) return;
+        await addToCart(productData.id, selectedQuantity);
+    }
+
+    async function buyNow() {
+        if(!productData) return;
+        if (!API.isLoggedIn()) {
+            Toast.info('Please login to purchase');
+            setTimeout(() => window.location.href = '/login/', 1000);
             return;
         }
-        productData = product;
-        document.title = `${product.name} — Iri Collections`;
-        renderProduct(product);
-    } catch (err) {
-        console.error(err);
+        await addToCart(productData.id, selectedQuantity);
+        window.location.href = '/checkout/';
     }
-}
 
-function renderProduct(p) {
-    const discount = p.compare_price ? Math.round((1 - p.price / p.compare_price) * 100) : 0;
-    const imgSrc = p.display_image || p.image_url || p.image || '';
-
-    let stockClass = 'in-stock', stockText = `In Stock (${p.stock} available)`;
-    if (p.stock === 0) { stockClass = 'out-of-stock'; stockText = 'Out of Stock'; }
-    else if (p.stock <= 5) { stockClass = 'low-stock'; stockText = `Only ${p.stock} left`; }
-
-    const isInWishlist = window.wishlistItems ? window.wishlistItems.has(p.id) : false;
-    const heartIcon = isInWishlist ? '♥' : '♡';
-
-    document.getElementById('product-detail-content').innerHTML = `
-        <div class="product-detail fade-in">
-            <div class="product-detail-image">
-                <img src="${imgSrc}" alt="${p.name}">
-            </div>
-            <div class="product-detail-info">
-                <a href="/catalog/?category=${p.category_name?.toLowerCase() || ''}" 
-                   style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); margin-bottom:var(--space-sm); display:inline-block;">
-                    ← ${p.category_name || 'Shop'}
-                </a>
-                <h1>${p.name}</h1>
-                <div class="product-detail-price">
-                    ${formatPrice(p.price)}
-                    ${p.compare_price ? `<span class="original">${formatPrice(p.compare_price)}</span>` : ''}
-                    ${discount > 0 ? `<span style="font-size:0.9rem; color:var(--success); margin-left:0.5rem;">${discount}% off</span>` : ''}
-                </div>
-                <span class="stock-badge ${stockClass}">● ${stockText}</span>
-
-                <div class="product-meta">
-                    ${p.material ? `<div class="product-meta-item"><div class="label">Material</div><div>${p.material}</div></div>` : ''}
-                    ${p.weight ? `<div class="product-meta-item"><div class="label">Weight</div><div>${p.weight}</div></div>` : ''}
-                    <div class="product-meta-item"><div class="label">Category</div><div>${p.category_name}</div></div>
-                    <div class="product-meta-item"><div class="label">SKU</div><div>IRI-${String(p.id).padStart(4, '0')}</div></div>
-                </div>
-
-                <p class="product-detail-description">${p.description}</p>
-
-                ${p.stock > 0 ? `
-                <div class="quantity-control">
-                    <button onclick="changeQty(-1)">−</button>
-                    <input type="number" id="qty-input" value="1" min="1" max="${p.stock}" readonly>
-                    <button onclick="changeQty(1)">+</button>
-                </div>
-                <div style="display:flex; gap:var(--space-md);">
-                    <button class="btn btn-primary btn-lg" onclick="addToCartDetail()" style="flex:1;">
-                        🛒 Add to Cart
-                    </button>
-                    <button class="wishlist-btn" onclick="toggleWishlist(${p.id})" id="btn-wishlist-${p.id}" style="font-size: 1.5rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; width: 50px; cursor: pointer; color: var(--gold);">${heartIcon}</button>
-                    <button class="btn btn-secondary btn-lg" onclick="buyNow()">
-                        Buy Now
-                    </button>
-                </div>
-                ` : `
-                <div style="display:flex; gap:var(--space-md);">
-                    <button class="btn btn-primary btn-lg btn-block" disabled style="flex:1;">Out of Stock</button>
-                    <button class="wishlist-btn" onclick="toggleWishlist(${p.id})" id="btn-wishlist-${p.id}" style="font-size: 1.5rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; width: 50px; cursor: pointer; color: var(--gold);">${heartIcon}</button>
-                </div>
-                `}
-            </div>
-        </div>
-    `;
-}
-
-function changeQty(delta) {
-    const inp = document.getElementById('qty-input');
-    let val = parseInt(inp.value) + delta;
-    if (val < 1) val = 1;
-    if (val > productData.stock) val = productData.stock;
-    inp.value = val;
-    selectedQuantity = val;
-}
-
-async function addToCartDetail() {
-    await addToCart(productData.id, selectedQuantity);
-}
-
-async function buyNow() {
-    if (!API.isLoggedIn()) {
-        Toast.info('Please login to purchase');
-        setTimeout(() => window.location.href = '/login/', 1000);
-        return;
-    }
-    await addToCart(productData.id, selectedQuantity);
-    window.location.href = '/checkout/';
-}
-
-document.addEventListener('DOMContentLoaded', loadProduct);
+    document.addEventListener('DOMContentLoaded', loadProduct);
 </script>
 {% endblock %}
