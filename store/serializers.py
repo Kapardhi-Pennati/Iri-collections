@@ -109,8 +109,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = (
             "id",
-            "razorpay_order_id",
-            "razorpay_payment_id",
+            "stripe_checkout_session_id",
+            "stripe_payment_intent_id",
             "status",
             "amount",
             "created_at",

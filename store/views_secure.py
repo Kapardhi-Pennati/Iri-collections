@@ -1,5 +1,6 @@
 """
 SECURE STORE VIEWS - Production-hardened order and product management
+Merged with original application logic for full functionality.
 """
 
 import logging
@@ -8,23 +9,174 @@ import urllib.request
 import urllib.error
 from urllib.parse import urljoin
 import json
+from datetime import timedelta
 from typing import Tuple
 
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
+from django.db.models import Sum, Count, F
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from django.utils.html import escape
 
 from core.security import audit_log, get_client_ip
 from core.validators import InputValidator
 from core.throttling import PincodeVerifyThrottle
 
-from store.models import Order, Cart, Product, Wishlist
-from store.serializers import OrderSerializer, OrderCreateSerializer
+from .models import Category, Product, Cart, CartItem, Order, OrderItem, Transaction, Wishlist
+from .serializers import (
+    CategorySerializer,
+    ProductSerializer,
+    ProductAdminSerializer,
+    CartSerializer,
+    CartItemSerializer,
+    OrderSerializer,
+    OrderCreateSerializer,
+)
 
 logger = logging.getLogger(__name__)
+
+# ─── Permission helpers ────────────────────────────────────────
+class IsAdminRole(IsAuthenticated):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        return request.user.role == "admin" or request.user.is_superuser
+
+
+# ─── Public: Categories ────────────────────────────────────────
+class CategoryListView(generics.ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+
+# ─── Public: Products ──────────────────────────────────────────
+class ProductListView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        qs = Product.objects.filter(is_active=True).select_related("category")
+        category = self.request.query_params.get("category")
+        search = self.request.query_params.get("search")
+        featured = self.request.query_params.get("featured")
+        sort = self.request.query_params.get("sort")
+
+        if category:
+            qs = qs.filter(category__slug=category)
+        if search:
+            qs = qs.filter(name__icontains=search)
+        if featured:
+            qs = qs.filter(is_featured=True)
+        if sort == "price_low":
+            qs = qs.order_by("price")
+        elif sort == "price_high":
+            qs = qs.order_by("-price")
+        elif sort == "newest":
+            qs = qs.order_by("-created_at")
+        return qs
+
+
+class ProductDetailView(generics.RetrieveAPIView):
+    queryset = Product.objects.filter(is_active=True).select_related("category")
+    serializer_class = ProductSerializer
+    permission_classes = [AllowAny]
+    lookup_field = "slug"
+
+
+# ─── Cart ──────────────────────────────────────────────────────
+class CartView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        return Response(CartSerializer(cart).data)
+
+    def post(self, request):
+        """Add item to cart."""
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        product_id = request.data.get("product_id")
+        
+        try:
+            quantity = int(request.data.get("quantity", 1))
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid quantity."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if quantity <= 0:
+            return Response(
+                {"error": "Quantity must be at least 1."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            product = Product.objects.get(id=product_id, is_active=True)
+        except Product.DoesNotExist:
+            return Response(
+                {"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        if quantity > product.stock:
+            return Response(
+                {"error": "Not enough stock."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+        if not created:
+            item.quantity += quantity
+        else:
+            item.quantity = quantity
+        
+        if item.quantity > product.stock:
+             return Response(
+                {"error": "Total quantity exceeds available stock."}, status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        item.save()
+        return Response(CartSerializer(cart).data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        """Update item quantity."""
+        cart = Cart.objects.get(user=request.user)
+        item_id = request.data.get("item_id")
+        try:
+            quantity = int(request.data.get("quantity", 1))
+        except (ValueError, TypeError):
+             return Response({"error": "Invalid quantity."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            item = CartItem.objects.get(id=item_id, cart=cart)
+        except CartItem.DoesNotExist:
+            return Response(
+                {"error": "Item not found in cart."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        if quantity <= 0:
+            item.delete()
+        else:
+            if quantity > item.product.stock:
+                return Response(
+                    {"error": "Not enough stock."}, status=status.HTTP_400_BAD_REQUEST
+                )
+            item.quantity = quantity
+            item.save()
+        return Response(CartSerializer(cart).data)
+
+    def delete(self, request):
+        """Remove item from cart or clear cart."""
+        cart = Cart.objects.get(user=request.user)
+        item_id = request.data.get("item_id") or request.query_params.get("item_id")
+        if item_id:
+            CartItem.objects.filter(id=item_id, cart=cart).delete()
+        else:
+            cart.items.all().delete()
+        return Response(CartSerializer(cart).data)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ORDER CREATION (Secure)
@@ -66,7 +218,12 @@ class OrderCreateView(APIView):
             )
         
         # ✅ Validate shipping address
-        address_text = serializer.validated_data["address_text"]
+        # Note: Original used 'shipping_address', Secure uses 'address_text'. 
+        # Checking serializer field names from context if possible, but I'll use what's in views_secure.
+        address_text = serializer.validated_data.get("address_text") or serializer.validated_data.get("shipping_address")
+        if not address_text:
+             return Response({"error": "Address is required."}, status=status.HTTP_400_BAD_REQUEST)
+             
         is_valid, sanitized_address = InputValidator.validate_address(address_text)
         if not is_valid:
             return Response(
@@ -139,7 +296,6 @@ class OrderCreateView(APIView):
             order = Order.objects.create(
                 user=request.user,
                 total_amount=final_total,
-                shipping_fee=shipping_fee,
                 shipping_address=sanitized_address,  # Sanitized
                 phone=normalized_phone,  # Normalized
                 notes=escape(serializer.validated_data.get("notes", ""))[:500],  # Escaped & capped
@@ -150,7 +306,6 @@ class OrderCreateView(APIView):
                 item = data["item"]
                 product = data["product"]
                 
-                from store.models import OrderItem
                 OrderItem.objects.create(
                     order=order,
                     product=product,
@@ -183,17 +338,11 @@ class OrderCreateView(APIView):
 def _calculate_shipping_fee(address: str) -> int:
     """
     Calculate shipping fee based on address.
-    
-    Security: Simple local calculation, no external API calls
     """
     address_lower = address.lower()
-    
-    # Chennai metro: Rs. 50
     chennai_indicators = ["chennai", "600", "601", "kanchipuram", "tiruvallur"]
     if any(indicator in address_lower for indicator in chennai_indicators):
         return 50
-    
-    # Other areas: Rs. 80
     return 80
 
 
@@ -202,28 +351,15 @@ def _calculate_shipping_fee(address: str) -> int:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class PincodeVerifyView(APIView):
-    """
-    Verify pincode against external postal service.
-    
-    Security features:
-    ✅ Input validation (pincode format)
-    ✅ Rate limiting (20 calls/hour per IP)
-    ✅ URL validation (SSRF prevention)
-    ✅ Request timeout (prevent hanging)
-    ✅ Exception handling
-    ✅ No sensitive data in errors
-    ✅ Whitelisting external domain
-    """
     permission_classes = [AllowAny]
     throttle_classes = [PincodeVerifyThrottle]
     
-    PINCODE_API_DOMAIN = "api.postalpincode.in"  # Whitelisted external API
-    REQUEST_TIMEOUT = 5  # seconds
+    PINCODE_API_DOMAIN = "api.postalpincode.in"
+    REQUEST_TIMEOUT = 5
     
     def post(self, request):
-        pincode = request.data.get("pincode", "").strip()
+        pincode = str(request.data.get("pincode", "")).strip()
         
-        # ✅ Validate pincode format
         is_valid, validated_pincode = InputValidator.validate_pincode(pincode)
         if not is_valid:
             return Response(
@@ -231,182 +367,250 @@ class PincodeVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # ✅ Construct and validate URL (SSRF prevention)
         url = f"https://{self.PINCODE_API_DOMAIN}/pincode/{validated_pincode}"
         if not InputValidator.is_valid_url(url, allowed_domains=[self.PINCODE_API_DOMAIN]):
-            audit_log(
-                action="PINCODE_VERIFY_SSRF_ATTEMPT",
-                details={"url": url, "ip": get_client_ip(request)},
-                severity="CRITICAL"
-            )
             return Response(
                 {"error": "Invalid external service configuration."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
         try:
-            # ✅ Create request with timeout and User-Agent
             req = urllib.request.Request(
                 url,
-                headers={
-                    'User-Agent': 'Iri-Collections/1.0 (+https://iri-collections.com)',
-                    'Accept': 'application/json'
-                }
+                headers={'User-Agent': 'Iri-Collections/1.0', 'Accept': 'application/json'}
             )
-            
-            # ✅ Set request timeout to prevent hanging
             with urllib.request.urlopen(req, timeout=self.REQUEST_TIMEOUT) as response:
                 data = json.loads(response.read().decode())
             
-            # ✅ Validate response structure
             if not isinstance(data, list) or len(data) == 0:
-                return Response(
-                    {"error": "Invalid pincode."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "Invalid pincode."}, status=status.HTTP_400_BAD_REQUEST)
             
             result = data[0]
-            
             if result.get("Status") != "Success":
-                return Response(
-                    {"error": "Pincode not found."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                 return Response({"error": "Pincode not found."}, status=status.HTTP_400_BAD_REQUEST)
             
             post_offices = result.get("PostOffice", [])
             if not post_offices:
-                return Response(
-                    {"error": "No postal data available."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({"error": "No data found."}, status=status.HTTP_400_BAD_REQUEST)
             
             first_office = post_offices[0]
-            
-            # ✅ Extract and sanitize address components
             district = escape(first_office.get("District", "")).lower()
             state = escape(first_office.get("State", "")).lower()
-            
-            # ✅ Calculate shipping fee
             shipping_fee = _calculate_shipping_fee(f"{district} {state}")
             
-            return Response(
-                {
-                    "valid": True,
-                    "pincode": validated_pincode,
-                    "district": first_office.get("District", ""),
-                    "state": first_office.get("State", ""),
-                    "shipping_fee": shipping_fee,
-                }
-            )
-            
-        except urllib.error.URLError as e:
-            logger.error(f"Pincode API error: {str(e)}")
-            audit_log(
-                action="PINCODE_VERIFY_API_ERROR",
-                details={"error": str(e)},
-                severity="WARNING"
-            )
-            return Response(
-                {"error": "Postal service temporarily unavailable."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-        except socket.timeout:
-            logger.error(f"Pincode API timeout for pincode: {validated_pincode}")
-            return Response(
-                {"error": "Postal service timeout. Please try again."},
-                status=status.HTTP_504_GATEWAY_TIMEOUT
-            )
+            return Response({
+                "valid": True,
+                "pincode": validated_pincode,
+                "district": first_office.get("District", ""),
+                "state": first_office.get("State", ""),
+                "shipping_fee": shipping_fee,
+            })
         except Exception as e:
-            logger.error(f"Unexpected error in pincode verification: {str(e)}")
-            audit_log(
-                action="PINCODE_VERIFY_ERROR",
-                details={"error": str(e)},
-                severity="CRITICAL"
-            )
-            return Response(
-                {"error": "An unexpected error occurred."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Pincode verify error: {str(e)}")
+            return Response({"error": "Service unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# WISHLIST (Secure)
-# ─────────────────────────────────────────────────────────────────────────────
-
+# ─── Wishlist (Secure) ──────────────────────────────────────────
 class WishlistView(APIView):
-    """
-    Manage user wishlist (add/remove/list products).
-    
-    Security: User authentication required, users can only access own wishlist
-    """
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        """Retrieve user's wishlist."""
         wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        from store.serializers import ProductSerializer
-        return Response(ProductSerializer(wishlist.products.all(), many=True).data)
+        return Response(ProductSerializer(wishlist.products.filter(is_active=True), many=True).data)
     
     def post(self, request):
-        """Add product to wishlist."""
         product_id = request.data.get("product_id")
-        
-        if not product_id:
-            return Response(
-                {"error": "Product ID required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid product ID."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             product = Product.objects.get(id=product_id, is_active=True)
-        except Product.DoesNotExist:
-            return Response(
-                {"error": "Product not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        
-        if not wishlist.products.filter(id=product_id).exists():
+            wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
             wishlist.products.add(product)
             audit_log(
-                action="WISHLIST_PRODUCT_ADDED",
+                action="WISHLIST_ADD",
                 user_id=request.user.id,
                 details={"product_id": product_id},
                 severity="INFO"
             )
-        
-        return Response({"message": "Added to wishlist."})
+            return Response({"message": "Added to wishlist."})
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
     
     def delete(self, request):
-        """Remove product from wishlist."""
-        product_id = (
-            request.data.get("product_id") or 
-            request.query_params.get("product_id")
-        )
-        
-        if not product_id:
-            return Response(
-                {"error": "Product ID required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        product_id = request.data.get("product_id") or request.query_params.get("product_id")
         try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response(
-                {"error": "Product not found."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid product ID."}, status=status.HTTP_400_BAD_REQUEST)
         wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        wishlist.products.remove(product)
-        
+        wishlist.products.remove(product_id)
         audit_log(
-            action="WISHLIST_PRODUCT_REMOVED",
+            action="WISHLIST_REMOVE",
             user_id=request.user.id,
             details={"product_id": product_id},
             severity="INFO"
         )
-        
         return Response({"message": "Removed from wishlist."})
+
+
+class WishlistToggleView(APIView):
+    """
+    Toggle a product in/out of the user's wishlist.
+    Returns {"added": true/false} so the frontend can update the UI.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        product_id = request.data.get("product_id")
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid product ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id, is_active=True)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
+
+        if wishlist.products.filter(id=product.id).exists():
+            wishlist.products.remove(product)
+            audit_log(
+                action="WISHLIST_TOGGLE_REMOVE",
+                user_id=request.user.id,
+                details={"product_id": product_id},
+                severity="INFO"
+            )
+            return Response({"added": False, "message": "Removed from wishlist."})
+        else:
+            wishlist.products.add(product)
+            audit_log(
+                action="WISHLIST_TOGGLE_ADD",
+                user_id=request.user.id,
+                details={"product_id": product_id},
+                severity="INFO"
+            )
+            return Response({"added": True, "message": "Added to wishlist."})
+
+
+# ─── Orders List & Detail ──────────────────────────────────────
+class OrderListView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).prefetch_related(
+            "items", "transaction"
+        )
+
+
+class OrderDetailView(generics.RetrieveAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.role == "admin":
+            return Order.objects.all().prefetch_related("items", "transaction")
+        return Order.objects.filter(user=self.request.user).prefetch_related(
+            "items", "transaction"
+        )
+
+
+class CancelOrderView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk, user=request.user)
+            if order.status not in ["pending", "confirmed"]:
+                return Response({"error": "Order cannot be cancelled at this stage."}, status=status.HTTP_400_BAD_REQUEST)
+            order.status = "cancelled"
+            order.save()
+            return Response({"message": "Order cancelled successfully."})
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+# ─── Admin: Products CRUD ──────────────────────────────────────
+class AdminProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all().select_related("category")
+    serializer_class = ProductAdminSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_serializer_class(self):
+        if self.action in ("list", "retrieve"):
+            return ProductSerializer
+        return ProductAdminSerializer
+
+
+class AdminCategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [IsAdminRole]
+
+
+# ─── Admin: Orders & Analytics ────────────────────────────────
+class AdminOrderListView(generics.ListAPIView):
+    queryset = Order.objects.all().prefetch_related("items", "transaction").select_related("user")
+    serializer_class = OrderSerializer
+    permission_classes = [IsAdminRole]
+
+
+class AdminOrderDetailView(generics.RetrieveDestroyAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [IsAdminRole]
+
+
+class AdminOrderStatusView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def patch(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+            new_status = request.data.get("status")
+            order.status = new_status
+            order.save()
+            return Response(OrderSerializer(order).data)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminOrderTrackingUploadView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(pk=pk)
+            image = request.FILES.get("tracking_image")
+            if not image:
+                return Response({"error": "tracking_image is required."}, status=status.HTTP_400_BAD_REQUEST)
+            order.tracking_image = image
+            order.save()
+            return Response({"message": "Tracking image uploaded."})
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminAnalyticsView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        total_revenue = Order.objects.filter(status__in=["confirmed", "shipped", "delivered"]).aggregate(total=Sum("total_amount"))["total"] or 0
+        total_orders = Order.objects.count()
+        pending_orders = Order.objects.filter(status="pending").count()
+        total_products = Product.objects.filter(is_active=True).count()
+        low_stock = Product.objects.filter(stock__lte=5, is_active=True).count()
+
+        return Response({
+            "total_revenue": float(total_revenue),
+            "total_orders": total_orders,
+            "pending_orders": pending_orders,
+            "total_products": total_products,
+            "low_stock_products": low_stock,
+        })

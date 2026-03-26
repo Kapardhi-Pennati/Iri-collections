@@ -416,23 +416,84 @@ class WishlistView(APIView):
     
     def get(self, request):
         wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        return Response(ProductSerializer(wishlist.products.all(), many=True).data)
+        return Response(ProductSerializer(wishlist.products.filter(is_active=True), many=True).data)
     
     def post(self, request):
         product_id = request.data.get("product_id")
         try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid product ID."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
             product = Product.objects.get(id=product_id, is_active=True)
             wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
             wishlist.products.add(product)
+            audit_log(
+                action="WISHLIST_ADD",
+                user_id=request.user.id,
+                details={"product_id": product_id},
+                severity="INFO"
+            )
             return Response({"message": "Added to wishlist."})
         except Product.DoesNotExist:
             return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
     
     def delete(self, request):
         product_id = request.data.get("product_id") or request.query_params.get("product_id")
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid product ID."}, status=status.HTTP_400_BAD_REQUEST)
         wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        wishlist.products.remove(id=product_id)
+        wishlist.products.remove(product_id)
+        audit_log(
+            action="WISHLIST_REMOVE",
+            user_id=request.user.id,
+            details={"product_id": product_id},
+            severity="INFO"
+        )
         return Response({"message": "Removed from wishlist."})
+
+
+class WishlistToggleView(APIView):
+    """
+    Toggle a product in/out of the user's wishlist.
+    Returns {"added": true/false} so the frontend can update the UI.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        product_id = request.data.get("product_id")
+        try:
+            product_id = int(product_id)
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid product ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id, is_active=True)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
+
+        if wishlist.products.filter(id=product.id).exists():
+            wishlist.products.remove(product)
+            audit_log(
+                action="WISHLIST_TOGGLE_REMOVE",
+                user_id=request.user.id,
+                details={"product_id": product_id},
+                severity="INFO"
+            )
+            return Response({"added": False, "message": "Removed from wishlist."})
+        else:
+            wishlist.products.add(product)
+            audit_log(
+                action="WISHLIST_TOGGLE_ADD",
+                user_id=request.user.id,
+                details={"product_id": product_id},
+                severity="INFO"
+            )
+            return Response({"added": True, "message": "Added to wishlist."})
 
 
 # ─── Orders List & Detail ──────────────────────────────────────

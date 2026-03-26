@@ -1,9 +1,8 @@
 """
-SECURE PAYMENT PROCESSING - Razorpay integration with security hardening
+SECURE PAYMENT PROCESSING - Stripe integration with security hardening
 """
 
-import hmac
-import hashlib
+import json
 import logging
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -11,69 +10,42 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-import razorpay
+import stripe
 
-from core.security import verify_hmac_signature, audit_log, get_client_ip
-from core.throttling import PaymentThrottle
+from core.security import audit_log, get_client_ip
 from store.models import Order, Transaction
 
 logger = logging.getLogger(__name__)
 
-
-def get_razorpay_client():
-    """
-    Initialize Razorpay client with credentials from settings.
-    
-    v2.0+ Features:
-    ✅ Retry mechanism enabled for failed API calls
-    ✅ Enhanced error handling for network issues
-    ✅ App details for Razorpay monitoring
-    """
-    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
-        raise ValueError("Razorpay credentials not configured")
-    
-    client = razorpay.Client(
-        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
-    )
-    
-    # ✅ v2.0+: Enable automatic retry for failed API calls
-    client.enable_retry(True)
-    
-    # ✅ v2.0+: Set app details for Razorpay tracking and monitoring
-    client.set_app_details({
-        "title": "Iri Collections",
-        "version": "1.0.0"
-    })
-    
-    return client
+# Configure Stripe SDK
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CREATE PAYMENT
+# CREATE CHECKOUT SESSION
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def create_payment(request):
+def create_checkout_session(request):
     """
-    Initialize Razorpay payment order for checkout.
-    
+    Create a Stripe Checkout Session for an order.
+
     Security features:
     ✅ Requires authentication
     ✅ Validates order belongs to user
     ✅ Prevents duplicate payment
     ✅ Amount validation
-    ✅ Rate limiting
     ✅ Audit logging
     """
     order_id = request.data.get("order_id")
-    
+
     if not order_id:
         return Response(
             {"error": "Order ID required."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     try:
         # ✅ Verify order belongs to current user
         order = Order.objects.get(id=order_id, user=request.user)
@@ -88,7 +60,7 @@ def create_payment(request):
             {"error": "Order not found or access denied."},
             status=status.HTTP_404_NOT_FOUND
         )
-    
+
     # ✅ Prevent paying for already-paid orders
     if hasattr(order, "transaction") and order.transaction.status == "paid":
         audit_log(
@@ -101,48 +73,79 @@ def create_payment(request):
             {"error": "Order already paid."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     # ✅ Prevent paying for cancelled orders
     if order.status == "cancelled":
         return Response(
             {"error": "Cancelled orders cannot be paid."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     # ✅ Validate amount is positive and reasonable
-    if order.total_amount <= 0 or order.total_amount > 999999:  # 99,99,99
+    if order.total_amount <= 0 or order.total_amount > 999999:
         audit_log(
             action="PAYMENT_INVALID_AMOUNT",
             user_id=request.user.id,
-            details={"order_id": order_id, "amount": order.total_amount},
+            details={"order_id": order_id, "amount": float(order.total_amount)},
             severity="CRITICAL"
         )
         return Response(
             {"error": "Invalid order amount."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    # ✅ Initialize Razorpay payment
+
+    # ✅ Build line items from order items
+    line_items = []
+    for item in order.items.all():
+        line_items.append({
+            "price_data": {
+                "currency": "inr",
+                "product_data": {
+                    "name": item.product_name,
+                },
+                "unit_amount": int(item.price_at_purchase * 100),  # Convert to paise
+            },
+            "quantity": item.quantity,
+        })
+
+    # ✅ Add shipping fee as a line item if applicable
+    if order.shipping_fee > 0:
+        line_items.append({
+            "price_data": {
+                "currency": "inr",
+                "product_data": {
+                    "name": "Shipping Fee",
+                },
+                "unit_amount": int(order.shipping_fee * 100),
+            },
+            "quantity": 1,
+        })
+
+    # ✅ Create Stripe Checkout Session
     try:
-        client = get_razorpay_client()
-        amount_paise = int(order.total_amount * 100)  # Convert to paise
-        
-        razorpay_order = client.order.create(
-            {
-                "amount": amount_paise,
-                "currency": "INR",
-                "receipt": order.order_number,
-                "payment_capture": 1,  # Auto-capture payment
-                "notes": {
-                    "order_id": str(order.id),
-                    "user_id": str(request.user.id),
-                }
-            }
+        # Build success/cancel URLs from the request origin
+        origin = request.META.get("HTTP_ORIGIN", request.build_absolute_uri("/"))
+        success_url = f"{origin}/api/payments/success/?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{origin}/orders/"
+
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            client_reference_id=str(order.id),
+            customer_email=request.user.email,
+            metadata={
+                "order_id": str(order.id),
+                "order_number": order.order_number,
+                "user_id": str(request.user.id),
+            },
         )
-    except Exception as e:
-        logger.error(f"Razorpay order creation failed: {str(e)}")
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe checkout session creation failed: {str(e)}")
         audit_log(
-            action="PAYMENT_RAZORPAY_ERROR",
+            action="PAYMENT_STRIPE_ERROR",
             user_id=request.user.id,
             details={"order_id": order_id, "error": str(e)},
             severity="CRITICAL"
@@ -151,34 +154,33 @@ def create_payment(request):
             {"error": "Payment gateway error. Please try again later."},
             status=status.HTTP_502_BAD_GATEWAY
         )
-    
-    # ✅ Create transaction record
+
+    # ✅ Create or update transaction record
     Transaction.objects.update_or_create(
         order=order,
         defaults={
-            "razorpay_order_id": razorpay_order["id"],
+            "stripe_checkout_session_id": checkout_session.id,
             "amount": order.total_amount,
             "status": "created",
         },
     )
-    
+
     audit_log(
         action="PAYMENT_INITIATED",
         user_id=request.user.id,
         details={
             "order_id": order_id,
-            "amount": order.total_amount,
-            "razorpay_order_id": razorpay_order["id"]
+            "amount": float(order.total_amount),
+            "session_id": checkout_session.id,
         },
         severity="INFO"
     )
-    
+
     return Response(
         {
-            "razorpay_order_id": razorpay_order["id"],
-            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
-            "amount": amount_paise,
-            "currency": "INR",
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id,
+            "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
             "order_number": order.order_number,
         },
         status=status.HTTP_200_OK
@@ -186,228 +188,201 @@ def create_payment(request):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VERIFY PAYMENT
+# PAYMENT SUCCESS (redirect landing page)
 # ─────────────────────────────────────────────────────────────────────────────
 
-@api_view(["POST"])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def verify_payment(request):
+def payment_success(request):
     """
-    Verify Razorpay payment and update order status.
-    
-    Security features:
-    ✅ Validates user authentication
-    ✅ Verifies Razorpay signature
-    ✅ Prevents replay attacks
-    ✅ Rate limiting
-    ✅ Audit logging
+    Handle redirect after successful Stripe Checkout.
+    Verifies the session and returns order confirmation details.
+
+    Note: The actual payment confirmation happens via the webhook.
+    This endpoint is for the frontend redirect only.
     """
-    razorpay_order_id = request.data.get("razorpay_order_id")
-    razorpay_payment_id = request.data.get("razorpay_payment_id")
-    razorpay_signature = request.data.get("razorpay_signature")
-    
-    # ✅ Validate all required fields
-    if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature]):
+    session_id = request.query_params.get("session_id")
+
+    if not session_id:
         return Response(
-            {"error": "Missing payment details."},
+            {"error": "Session ID required."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    # ✅ Verify Razorpay signature (prevents tampering)
+
     try:
-        client = get_razorpay_client()
-        client.utility.verify_payment_signature(
-            {
-                "razorpay_order_id": razorpay_order_id,
-                "razorpay_payment_id": razorpay_payment_id,
-                "razorpay_signature": razorpay_signature,
-            }
-        )
-    except razorpay.errors.SignatureVerificationError:
-        audit_log(
-            action="PAYMENT_VERIFICATION_FAILED_INVALID_SIGNATURE",
-            user_id=request.user.id,
-            details={
-                "razorpay_order_id": razorpay_order_id,
-                "ip": get_client_ip(request)
-            },
-            severity="CRITICAL"
-        )
-        logger.error(f"Invalid Razorpay signature for order {razorpay_order_id}")
+        # ✅ Retrieve session from Stripe to verify it's real
+        session = stripe.checkout.Session.retrieve(session_id)
+    except stripe.error.StripeError:
         return Response(
-            {"error": "Payment verification failed."},
+            {"error": "Invalid session."},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
-    # ✅ Update transaction
+
+    # ✅ Verify the session belongs to this user
     try:
-        transaction = Transaction.objects.get(razorpay_order_id=razorpay_order_id)
-        
-        # ✅ Prevent duplicate marking as paid
-        if transaction.status == "paid":
-            audit_log(
-                action="PAYMENT_ALREADY_VERIFIED",
-                user_id=request.user.id,
-                details={"razorpay_order_id": razorpay_order_id},
-                severity="INFO"
-            )
+        transaction = Transaction.objects.get(
+            stripe_checkout_session_id=session_id
+        )
+        if transaction.order.user != request.user:
             return Response(
-                {
-                    "message": "Payment already verified.",
-                    "order_number": transaction.order.order_number,
-                    "status": "confirmed",
-                }
+                {"error": "Access denied."},
+                status=status.HTTP_403_FORBIDDEN
             )
-        
-        # ✅ Mark as paid
-        transaction.razorpay_payment_id = razorpay_payment_id
-        transaction.razorpay_signature = razorpay_signature
-        transaction.status = "paid"
-        transaction.save()
-        
-        # ✅ Update order status
-        transaction.order.status = "confirmed"
-        transaction.order.save()
-        
-        audit_log(
-            action="PAYMENT_VERIFIED",
-            user_id=request.user.id,
-            details={
-                "order_id": transaction.order.id,
-                "razorpay_payment_id": razorpay_payment_id
-            },
-            severity="INFO"
-        )
-        
-        return Response(
-            {
-                "message": "Payment verified successfully.",
-                "order_number": transaction.order.order_number,
-                "status": "confirmed",
-            }
-        )
-        
     except Transaction.DoesNotExist:
-        audit_log(
-            action="PAYMENT_VERIFICATION_TRANSACTION_NOT_FOUND",
-            user_id=request.user.id,
-            details={"razorpay_order_id": razorpay_order_id},
-            severity="CRITICAL"
-        )
         return Response(
             {"error": "Transaction not found."},
             status=status.HTTP_404_NOT_FOUND
         )
+
+    return Response({
+        "message": "Payment completed successfully.",
+        "order_number": transaction.order.order_number,
+        "status": transaction.order.status,
+        "payment_status": session.payment_status,
+    })
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WEBHOOK (Async Payment Notifications)
 # ─────────────────────────────────────────────────────────────────────────────
 
-@csrf_exempt  # ✅ OK: Webhook signature verification replaces CSRF
+@csrf_exempt  # ✅ OK: Stripe webhook signature verification replaces CSRF
 @api_view(["POST"])
 @permission_classes([AllowAny])  # ✅ Async webhook, no user context
-def payment_webhook(request):
+def stripe_webhook(request):
     """
-    Handle Razorpay webhook for payment confirmation.
-    
+    Handle Stripe webhook for payment confirmation.
+
     Security features:
-    ✅ Signature verification (HMAC-SHA256)
+    ✅ Signature verification (Stripe signing secret)
     ✅ Idempotent (prevents double-processing)
     ✅ Audit logging
     ✅ Error handling
-    
-    Razorpay sends: X-Razorpay-Signature header with HMAC(body, secret)
+
+    Stripe sends: Stripe-Signature header with timestamp + HMAC(body, secret)
     """
-    
+
     # ✅ Extract and verify signature
-    webhook_signature = request.headers.get("X-Razorpay-Signature", "")
-    
-    if not verify_hmac_signature(
-        message=request.body,
-        signature=webhook_signature,
-        secret=settings.RAZORPAY_KEY_SECRET
-    ):
+    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+    payload = request.body
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        # Invalid payload
+        logger.error("Stripe webhook: invalid payload")
+        return Response(
+            {"error": "Invalid payload."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except stripe.error.SignatureVerificationError:
         audit_log(
             action="WEBHOOK_INVALID_SIGNATURE",
             details={
-                "event": request.data.get("event"),
-                "ip": get_client_ip(request)
+                "ip": get_client_ip(request),
             },
             severity="CRITICAL"
         )
-        logger.error("Invalid webhook signature from Razorpay")
+        logger.error("Invalid webhook signature from Stripe")
         return Response(
             {"error": "Invalid signature."},
             status=status.HTTP_403_FORBIDDEN
         )
-    
-    payload = request.data
-    event = payload.get("event", "")
-    
+
     try:
-        # ✅ Handle payment.captured event
-        if event == "payment.captured":
-            payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
-            razorpay_order_id = payment.get("order_id")
-            razorpay_payment_id = payment.get("id")
-            
+        # ✅ Handle checkout.session.completed event
+        if event["type"] == "checkout.session.completed":
+            session = event["data"]["object"]
+            session_id = session["id"]
+            payment_intent_id = session.get("payment_intent", "")
+
             try:
-                transaction = Transaction.objects.get(razorpay_order_id=razorpay_order_id)
-                
+                transaction = Transaction.objects.get(
+                    stripe_checkout_session_id=session_id
+                )
+
                 # ✅ Idempotent: only process if not already paid
                 if transaction.status != "paid":
-                    transaction.razorpay_payment_id = razorpay_payment_id
+                    transaction.stripe_payment_intent_id = payment_intent_id
                     transaction.status = "paid"
                     transaction.save()
-                    
+
                     transaction.order.status = "confirmed"
                     transaction.order.save()
-                    
+
                     audit_log(
-                        action="WEBHOOK_PAYMENT_CAPTURED",
+                        action="WEBHOOK_PAYMENT_COMPLETED",
                         details={
                             "order_id": transaction.order.id,
-                            "razorpay_payment_id": razorpay_payment_id
+                            "session_id": session_id,
+                            "payment_intent_id": payment_intent_id,
                         },
                         severity="INFO"
                     )
-                        
+
             except Transaction.DoesNotExist:
-                logger.warning(f"Webhook received for unknown order: {razorpay_order_id}")
-        
-        # ✅ Handle payment.failed event
-        elif event == "payment.failed":
-            payment = payload.get("payload", {}).get("payment", {}).get("entity", {})
-            razorpay_order_id = payment.get("order_id")
-            
+                logger.warning(
+                    f"Webhook received for unknown session: {session_id}"
+                )
+
+        # ✅ Handle checkout.session.expired event
+        elif event["type"] == "checkout.session.expired":
+            session = event["data"]["object"]
+            session_id = session["id"]
+
             try:
-                transaction = Transaction.objects.get(razorpay_order_id=razorpay_order_id)
+                transaction = Transaction.objects.get(
+                    stripe_checkout_session_id=session_id
+                )
+                if transaction.status == "created":
+                    transaction.status = "failed"
+                    transaction.save()
+
+                    audit_log(
+                        action="WEBHOOK_SESSION_EXPIRED",
+                        details={"order_id": transaction.order.id},
+                        severity="WARNING"
+                    )
+
+            except Transaction.DoesNotExist:
+                pass
+
+        # ✅ Handle payment_intent.payment_failed event
+        elif event["type"] == "payment_intent.payment_failed":
+            payment_intent = event["data"]["object"]
+            payment_intent_id = payment_intent["id"]
+
+            try:
+                transaction = Transaction.objects.get(
+                    stripe_payment_intent_id=payment_intent_id
+                )
                 transaction.status = "failed"
                 transaction.save()
-                
+
                 audit_log(
                     action="WEBHOOK_PAYMENT_FAILED",
                     details={"order_id": transaction.order.id},
                     severity="WARNING"
                 )
-                    
+
             except Transaction.DoesNotExist:
                 pass
-        
+
         audit_log(
             action="WEBHOOK_PROCESSED",
-            details={"event": event},
+            details={"event_type": event["type"]},
             severity="INFO"
         )
-        
+
     except Exception as e:
         logger.error(f"Webhook processing error: {str(e)}")
         audit_log(
             action="WEBHOOK_PROCESSING_ERROR",
-            details={"event": event, "error": str(e)},
+            details={"event_type": event.get("type", "unknown"), "error": str(e)},
             severity="CRITICAL"
         )
-    
-    # ✅ Always return 200 OK to prevent Razorpay retry
+
+    # ✅ Always return 200 OK to acknowledge receipt
     return Response({"status": "ok"}, status=status.HTTP_200_OK)

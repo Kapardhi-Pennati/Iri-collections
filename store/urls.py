@@ -20,6 +20,7 @@ urlpatterns = [
     # Cart & Wishlist (authenticated)
     path("cart/", views.CartView.as_view(), name="cart"),
     path("wishlist/", views.WishlistView.as_view(), name="wishlist"),
+    path("wishlist/toggle/", views.WishlistToggleView.as_view(), name="wishlist-toggle"),
     # Orders (authenticated)
     path("orders/pincode-verify/", views.PincodeVerifyView.as_view(), name="pincode-verify"),
     path("orders/", views.OrderListView.as_view(), name="order-list"),

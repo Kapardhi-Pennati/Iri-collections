@@ -277,7 +277,7 @@ CORS_ALLOW_METHODS = [
     "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"  # Restrict to needed methods
 ]
 CORS_ALLOW_HEADERS = [
-    "content-type", "authorization", "x-csrf-token"  # Only required headers
+    "content-type", "authorization", "x-csrf-token", "x-requested-with"  # Required headers
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -329,20 +329,22 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PAYMENTS (RAZORPAY)
+# PAYMENTS (STRIPE)
 # ─────────────────────────────────────────────────────────────────────────────
 
-# 🔴 CRITICAL: Razorpay credentials must be in environment
-RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
-RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+# 🔴 CRITICAL: Stripe credentials must be in environment
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+if not STRIPE_SECRET_KEY:
     logger = logging.getLogger(__name__)
     if not DEBUG:
-        logger.warning("⚠️  RAZORPAY credentials missing. Payments will fail.")
+        logger.warning("⚠️  STRIPE_SECRET_KEY missing. Payments will fail.")
     # Dummy values for development
-    RAZORPAY_KEY_ID = RAZORPAY_KEY_ID or "rzp_test_placeholder"
-    RAZORPAY_KEY_SECRET = RAZORPAY_KEY_SECRET or "placeholder_secret"
+    STRIPE_SECRET_KEY = STRIPE_SECRET_KEY or "your_stripe_secret_key"
+    STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY or "your_stripe_publishable_key"
+    STRIPE_WEBHOOK_SECRET = STRIPE_WEBHOOK_SECRET or "your_stripe_webhook_secret"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CACHING (for rate limiting, sessions)

@@ -238,9 +238,8 @@ class Transaction(models.Model):
     order = models.OneToOneField(
         Order, on_delete=models.CASCADE, related_name="transaction"
     )
-    razorpay_order_id = models.CharField(max_length=100, blank=True, db_index=True)
-    razorpay_payment_id = models.CharField(max_length=100, blank=True)
-    razorpay_signature = models.CharField(max_length=256, blank=True)
+    stripe_checkout_session_id = models.CharField(max_length=255, blank=True, db_index=True)
+    stripe_payment_intent_id = models.CharField(max_length=255, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(
         max_length=10, choices=STATUS_CHOICES, default="created", db_index=True
@@ -255,7 +254,7 @@ class Transaction(models.Model):
             self.order.save()
 
     def __str__(self):
-        return f"Txn {self.razorpay_order_id} - {self.status}"
+        return f"Txn {self.stripe_checkout_session_id} - {self.status}"
 
 
 class Wishlist(models.Model):
