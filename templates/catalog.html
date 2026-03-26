@@ -1,210 +1,152 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Shop Collection — Iri Collections{% endblock %}
-{% block meta_description %}Explore our curated aura collection of handcrafted luxury jewelry. Each piece captures the light of tomorrow.{% endblock %}
+{% block title %}Shop Jewelry — Iri Collections{% endblock %}
+{% block meta_description %}Browse our curated collection of handcrafted jewelry. Necklaces, earrings, rings, bracelets & more.{% endblock %}
 
 {% block content %}
-<main class="pt-24 pb-32 px-6 max-w-7xl mx-auto">
-    <!-- Editorial Header -->
-    <section class="mb-16">
-        <h1 id="catalog-title" class="font-headline text-5xl md:text-7xl font-light tracking-tight mb-4 text-on-surface">The Aura Collection</h1>
-        <p class="font-body text-sm tracking-[0.2em] uppercase text-on-surface/60 max-w-xl leading-relaxed">
-            Curated ethereal pieces designed to capture and refract the essence of light.
-        </p>
-    </section>
-
-    <!-- Filter & Sort Bar -->
-    <section class="flex flex-col md:flex-row justify-between items-center py-6 border-b border-outline-variant/30 mb-12 gap-6">
-        <div class="flex items-center gap-8 overflow-x-auto w-full md:w-auto no-scrollbar" id="category-filters">
-            <button class="text-xs font-label uppercase tracking-widest text-primary font-bold flex items-center gap-2" data-category="">
-                <span class="material-symbols-outlined text-sm">filter_list</span>
-                All
-            </button>
-            <!-- Category Chips populated by JS -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h1 style="font-family: var(--font-display); font-size: 2.5rem;">Our <span class="text-gold">Collection</span></h1>
+            <div class="section-divider"></div>
         </div>
-        <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-            <div class="relative flex-grow md:flex-grow-0">
-                <input type="text" id="search-input" placeholder="Search..." 
-                       class="bg-transparent border border-outline-variant/30 px-4 py-2 text-xs font-label uppercase tracking-widest focus:ring-primary focus:border-primary w-full md:w-48 placeholder:opacity-30" />
+
+        <!-- Filters Bar -->
+        <div style="display:flex; gap:var(--space-md); flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:var(--space-xl);">
+            <div class="categories-bar" id="category-filters" style="margin-bottom:0;">
+                <button class="category-chip active" data-category="">All</button>
+                <!-- Populated by JS -->
             </div>
-            <select id="sort-select" class="bg-transparent border border-outline-variant/30 px-4 py-2 text-xs font-label uppercase tracking-widest focus:ring-primary focus:border-primary">
-                <option value="">Sort: Featured</option>
-                <option value="price_low">Price: Low - High</option>
-                <option value="price_high">Price: High - Low</option>
-                <option value="newest">Newest First</option>
-            </select>
+            <div style="display:flex; gap:var(--space-md); align-items:center;">
+                <input type="text" id="search-input" placeholder="Search jewelry..." style="width:220px;">
+                <select id="sort-select" style="width:180px;">
+                    <option value="">Sort by</option>
+                    <option value="price_low">Price: Low to High</option>
+                    <option value="price_high">Price: High to Low</option>
+                    <option value="newest">Newest First</option>
+                </select>
+            </div>
         </div>
-    </section>
 
-    <!-- Asymmetric Product Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-x-8 gap-y-16 md:gap-x-12 md:gap-y-24" id="products-grid">
-        <!-- Products populated by JS -->
-        <div class="col-span-full py-20 text-center opacity-30 italic">Loading collection...</div>
-    </div>
+        <!-- Products Grid -->
+        <div class="grid-products" id="products-grid">
+            <div class="page-loader"><div class="spinner"></div></div>
+        </div>
 
-    <!-- Pagination -->
-    <div id="pagination" class="mt-32 flex flex-col items-center gap-8">
-        <!-- Button styles in extra_js -->
+        <!-- Pagination -->
+        <div id="pagination" class="text-center mt-2" style="display:flex; gap:var(--space-sm); justify-content:center;"></div>
     </div>
-</main>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    let currentCategory = '';
-    let currentSearch = '';
-    let currentSort = '';
-    let currentPage = 1;
+let currentCategory = '';
+let currentSearch = '';
+let currentSort = '';
+let currentPage = 1;
 
-    // Redefine product card to match the new asymmetric grid style
-    function catalogProductCard(p, index) {
-        const imgSrc = p.display_image || p.image_url || p.image || '';
-        const priceString = formatPrice(p.price);
-        // Add offset to every second item in desktop view for the editorial look
-        const offsetClass = index % 2 === 1 ? 'lg:mt-24' : '';
-        
-        return `
-            <div class="group product-card cursor-pointer ${offsetClass}" onclick="window.location.href='/product/${p.slug}/'">
-                <div class="aspect-[4/5] overflow-hidden bg-surface-container-low mb-6 relative">
-                    <img alt="${escapeHTML(p.name)}" class="product-image w-full h-full object-cover transition-transform duration-700 ease-out" 
-                         data-src="${imgSrc}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500'%3E%3Crect fill='%23f6f4ea' width='400' height='500'/%3E%3C/svg%3E">
-                    <button class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-on-surface hover:text-error" 
-                            onclick="event.stopPropagation(); toggleWishlist(${p.id})">
-                        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' ${window.wishlistItems && window.wishlistItems.has(p.id) ? '1' : '0'};">favorite</span>
-                    </button>
-                    ${p.stock <= 0 ? '<div class="absolute inset-0 bg-white/50 flex items-center justify-center font-label text-[10px] tracking-widest uppercase text-on-surface">Sold Out</div>' : ''}
+async function loadProducts(page = 1) {
+    const grid = document.getElementById('products-grid');
+    grid.innerHTML = '<div class="page-loader"><div class="spinner"></div></div>';
+
+    let url = `/store/products/?page=${page}`;
+    if (currentCategory) url += `&category=${currentCategory}`;
+    if (currentSearch) url += `&search=${encodeURIComponent(currentSearch)}`;
+    if (currentSort) url += `&sort=${currentSort}`;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('featured') === 'true') url += '&featured=true';
+
+    try {
+        const data = await API.get(url);
+        if (data && data.results && data.results.length > 0) {
+            grid.innerHTML = data.results.map(p => productCardHTML(p)).join('');
+            initLazyLoading();
+            renderPagination(data);
+        } else {
+            grid.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="empty-state-icon">💎</div>
+                    <h3>No products found</h3>
+                    <p>Try adjusting your filters or search terms</p>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <h3 class="font-headline text-xl md:text-2xl font-light text-on-surface tracking-tight">${escapeHTML(p.name)}</h3>
-                    <p class="font-body text-[10px] uppercase tracking-widest text-on-surface/50">${escapeHTML(p.category_name || 'Jewelry')}</p>
-                    <span class="font-body text-sm mt-2 text-primary">${priceString}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    async function loadProducts(page = 1) {
-        const grid = document.getElementById('products-grid');
-        grid.innerHTML = '<div class="col-span-full py-20 text-center opacity-30 italic">Curating...</div>';
-
-        let url = `/store/products/?page=${page}`;
-        if (currentCategory) url += `&category=${currentCategory}`;
-        if (currentSearch) url += `&search=${encodeURIComponent(currentSearch)}`;
-        if (currentSort) url += `&sort=${currentSort}`;
-
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('featured') === 'true') url += '&featured=true';
-
-        try {
-            const data = await API.get(url);
-            if (data && data.results && data.results.length > 0) {
-                grid.innerHTML = data.results.map((p, idx) => catalogProductCard(p, idx)).join('');
-                initLazyLoading();
-                renderPagination(data);
-            } else {
-                grid.innerHTML = `
-                    <div class="col-span-full py-40 text-center animate-fade-in">
-                        <span class="material-symbols-outlined text-4xl opacity-20 mb-4">auto_awesome</span>
-                        <h3 class="font-headline text-2xl font-light">End of the Thread</h3>
-                        <p class="font-body text-xs text-on-surface/40 mt-2 uppercase tracking-[0.2em]">No pieces found matching your criteria</p>
-                    </div>
-                `;
-                document.getElementById('pagination').innerHTML = '';
-            }
-        } catch (err) { console.error(err); }
-    }
-
-    function renderPagination(data) {
-        const pag = document.getElementById('pagination');
-        if (!data.next && !data.previous) { pag.innerHTML = ''; return; }
-
-        let html = '<div class="w-full max-w-xs h-px bg-outline-variant/20 mb-8"></div>';
-        html += '<div class="flex items-center gap-12">';
-        
-        if (data.previous) {
-            html += `<button class="font-label text-xs uppercase tracking-[0.4em] text-on-surface/40 hover:text-primary transition-colors" 
-                            onclick="loadProducts(${currentPage - 1}); currentPage--; window.scrollTo({top: 0, behavior: 'smooth'});">Prev</button>`;
+            `;
+            document.getElementById('pagination').innerHTML = '';
         }
-        
-        html += `<span class="font-label text-xs uppercase tracking-[0.4em] text-primary font-bold">Page ${currentPage}</span>`;
-        
-        if (data.next) {
-            html += `<button class="font-label text-xs uppercase tracking-[0.4em] text-on-surface/40 hover:text-primary transition-colors" 
-                            onclick="loadProducts(${currentPage + 1}); currentPage++; window.scrollTo({top: 0, behavior: 'smooth'});">Next</button>`;
-        }
-        
-        html += '</div>';
-        pag.innerHTML = html;
+    } catch (err) {
+        grid.innerHTML = '<p class="text-center text-muted">Failed to load products.</p>';
     }
+}
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('category')) {
-            currentCategory = params.get('category');
+function renderPagination(data) {
+    const pag = document.getElementById('pagination');
+    if (!data.next && !data.previous) { pag.innerHTML = ''; return; }
+
+    let html = '';
+    if (data.previous) {
+        html += `<button class="btn btn-ghost btn-sm" onclick="loadProducts(${currentPage - 1}); currentPage--;">← Prev</button>`;
+    }
+    html += `<span class="btn btn-ghost btn-sm" style="pointer-events:none;">Page ${currentPage}</span>`;
+    if (data.next) {
+        html += `<button class="btn btn-ghost btn-sm" onclick="loadProducts(${currentPage + 1}); currentPage++;">Next →</button>`;
+    }
+    pag.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Check URL params for category
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('category')) currentCategory = params.get('category');
+
+    // Load categories for filter chips
+    try {
+        const cats = await API.get('/store/categories/');
+        const filters = document.getElementById('category-filters');
+        if (cats) {
+            cats.forEach(cat => {
+                const chip = document.createElement('button');
+                chip.className = 'category-chip' + (currentCategory === cat.slug ? ' active' : '');
+                chip.dataset.category = cat.slug;
+                chip.textContent = cat.name;
+                filters.appendChild(chip);
+                if (currentCategory === cat.slug) {
+                    filters.querySelector('[data-category=""]').classList.remove('active');
+                }
+            });
         }
+    } catch {}
 
-        // Load categories
-        try {
-            const cats = await API.get('/store/categories/');
-            const filters = document.getElementById('category-filters');
-            if (cats) {
-                cats.forEach(cat => {
-                    const btn = document.createElement('button');
-                    const isActive = currentCategory === cat.slug;
-                    btn.className = `text-xs font-label uppercase tracking-widest transition-colors ${isActive ? 'text-on-surface font-bold underline' : 'text-on-surface/50 hover:text-on-surface'}`;
-                    btn.dataset.category = cat.slug;
-                    btn.textContent = cat.name;
-                    btn.onclick = () => {
-                        currentCategory = cat.slug;
-                        document.querySelectorAll('#category-filters button').forEach(b => {
-                            b.classList.remove('text-on-surface', 'font-bold', 'underline');
-                            b.classList.add('text-on-surface/50');
-                        });
-                        btn.classList.add('text-on-surface', 'font-bold', 'underline');
-                        btn.classList.remove('text-on-surface/50');
-                        currentPage = 1;
-                        loadProducts(1);
-                        if(cat.slug) {
-                             document.getElementById('catalog-title').textContent = cat.name;
-                        } else {
-                             document.getElementById('catalog-title').textContent = 'The Collection';
-                        }
-                    };
-                    filters.appendChild(btn);
-                    if (isActive) document.getElementById('catalog-title').textContent = cat.name;
-                });
-            }
-        } catch {}
-
-        // Global filter behavior improvement
-        document.querySelector('[data-category=""]').onclick = () => {
-            currentCategory = '';
-             document.querySelectorAll('#category-filters button').forEach(b => { b.classList.remove('text-on-surface', 'font-bold', 'underline'); b.classList.add('text-on-surface/50'); });
-            document.querySelector('[data-category=""]').classList.add('text-on-surface', 'font-bold', 'underline');
-            document.getElementById('catalog-title').textContent = 'The Collection';
-            currentPage = 1; loadProducts(1);
-        };
-
-        // Search
-        let searchTimer;
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                currentSearch = e.target.value;
-                currentPage = 1;
-                loadProducts(1);
-            }, 400);
-        });
-
-        // Sort
-        document.getElementById('sort-select').addEventListener('change', (e) => {
-            currentSort = e.target.value;
-            currentPage = 1;
-            loadProducts(1);
-        });
-
+    // Category click
+    document.getElementById('category-filters').addEventListener('click', (e) => {
+        if (!e.target.classList.contains('category-chip')) return;
+        document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+        e.target.classList.add('active');
+        currentCategory = e.target.dataset.category;
+        currentPage = 1;
         loadProducts(1);
     });
+
+    // Search
+    let searchTimer;
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            currentSearch = e.target.value;
+            currentPage = 1;
+            loadProducts(1);
+        }, 400);
+    });
+
+    // Sort
+    document.getElementById('sort-select').addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        currentPage = 1;
+        loadProducts(1);
+    });
+
+    loadProducts(1);
+});
 </script>
 {% endblock %}

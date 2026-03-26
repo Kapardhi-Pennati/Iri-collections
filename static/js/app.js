@@ -237,39 +237,43 @@ function formatPrice(price) {
     }).format(price);
 }
 
-// ─── Product Card HTML (Lumina Ether Style) ───────────────────
-function productCardHTML(product, index = 0) {
+// ─── Product Card HTML ─────────────────────────────────────────
+function productCardHTML(product) {
+    const discount = product.compare_price
+        ? Math.round((1 - product.price / product.compare_price) * 100)
+        : 0;
     const imgSrc = product.display_image || product.image_url || product.image || '';
-    const price = formatPrice(product.price);
+
     const isOOS = product.stock <= 0;
+    const cardOpacity = isOOS ? '0.6' : '1';
     
+    // Heart icon logic
     const isInWishlist = window.wishlistItems ? window.wishlistItems.has(product.id) : false;
-    const heartIcon = isInWishlist ? 'favorite' : 'favorite';
-    const fillStyle = isInWishlist ? "fill: 1" : "fill: 0";
+    const heartIcon = isInWishlist ? '♥' : '♡';
 
     return `
-        <div class="group product-card cursor-pointer" onclick="window.location.href='/product/${product.slug}/'">
-            <div class="aspect-[4/5] overflow-hidden bg-surface-container-low mb-6 relative">
-                <img alt="${escapeHTML(product.name)}" class="product-image w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
-                     data-src="${imgSrc}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500'%3E%3Crect fill='%23f6f4ea' width='400' height='500'/%3E%3C/svg%3E">
-                <button class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-on-surface hover:text-error" 
-                        onclick="event.stopPropagation(); toggleWishlist(${product.id})">
-                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' ${isInWishlist ? '1' : '0'};">favorite</span>
-                </button>
-                ${isOOS ? '<div class="absolute inset-0 bg-white/50 flex items-center justify-center font-label text-[10px] tracking-widest uppercase text-on-surface">Sold Out</div>' : ''}
-                <div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button class="bg-on-surface text-surface w-10 h-10 flex items-center justify-center rounded-full shadow-lg" 
-                            onclick="event.stopPropagation(); addToCart(${product.id})">
-                        <span class="material-symbols-outlined text-sm">shopping_bag</span>
-                    </button>
+        <div class="card product-card" onclick="window.location.href='/product/${product.slug}/'" data-product-id="${product.id}" style="opacity: ${cardOpacity}; position: relative;">
+            <div class="product-card-image">
+                <img data-src="${imgSrc}" alt="${product.name}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Crect fill='%2316161f' width='400' height='400'/%3E%3C/svg%3E">
+                ${discount > 0 && !isOOS ? `<span class="product-card-badge">${discount}% Off</span>` : ''}
+                ${isOOS ? `<span class="product-card-badge" style="background:var(--error); color:white;">Out of Stock</span>` : ''}
+                
+                <button class="wishlist-btn" onclick="event.stopPropagation(); toggleWishlist(${product.id})" id="btn-wishlist-${product.id}" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: var(--gold); border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 1.2rem; cursor: pointer; z-index: 2; transition: transform 0.2s; display: flex; align-items: center; justify-content: center;">${heartIcon}</button>
+
+                <div class="product-card-actions">
+                    ${isOOS ? 
+                        `<button class="product-card-action-btn" disabled style="opacity:0.5;cursor:not-allowed;" title="Out of Stock">🚫</button>` : 
+                        `<button class="product-card-action-btn" onclick="event.stopPropagation(); addToCart(${product.id})" title="Add to Cart">🛒</button>`
+                    }
                 </div>
             </div>
-            <div class="flex flex-col gap-1">
-                <h3 class="font-headline text-lg md:text-xl font-light text-on-surface tracking-tight">${escapeHTML(product.name)}</h3>
-                <p class="font-body text-[10px] uppercase tracking-widest text-on-surface/50">${escapeHTML(product.category_name || 'Jewelry')}</p>
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="font-body text-sm text-primary">${price}</span>
-                    ${product.compare_price ? `<span class="text-xs line-through opacity-20">${formatPrice(product.compare_price)}</span>` : ''}
+            <div class="product-card-info">
+                <div class="product-card-category">${escapeHTML(product.category_name || '')}</div>
+                <h3 class="product-card-name">${escapeHTML(product.name)}</h3>
+                <div class="product-card-price">
+                    <span class="current">${formatPrice(product.price)}</span>
+                    ${product.compare_price ? `<span class="original">${formatPrice(product.compare_price)}</span>` : ''}
+                    ${discount > 0 ? `<span class="discount">${discount}% off</span>` : ''}
                 </div>
             </div>
         </div>

@@ -1,296 +1,89 @@
 {% load static %}
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
         content="{% block meta_description %}Iri Collections — Exquisite handcrafted jewelry. Discover necklaces, earrings, rings, bracelets & more.{% endblock %}">
     <title>{% block title %}Iri Collections{% endblock %}</title>
-
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@300;400;700&family=Manrope:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        rel="stylesheet" />
-
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "inverse-on-surface": "#f3f1e7",
-                        "on-surface-variant": "#42474f",
-                        "tertiary-container": "#aeb9b5",
-                        "error": "#ba1a1a",
-                        "surface-container-high": "#eae8de",
-                        "on-tertiary": "#ffffff",
-                        "on-tertiary-fixed-variant": "#3f4946",
-                        "error-container": "#ffdad6",
-                        "on-tertiary-fixed": "#141d1b",
-                        "on-secondary-fixed": "#241919",
-                        "inverse-primary": "#9dcafe",
-                        "secondary-fixed-dim": "#d6c2c2",
-                        "surface-bright": "#fcf9ef",
-                        "on-primary-container": "#144a77",
-                        "surface": "#fcf9ef",
-                        "on-surface": "#1b1c16",
-                        "outline-variant": "#c2c7d0",
-                        "on-error-container": "#93000a",
-                        "tertiary": "#56615d",
-                        "surface-container": "#f0eee4",
-                        "background": "#fcf9ef",
-                        "secondary-fixed": "#f3dddd",
-                        "on-tertiary-container": "#404a47",
-                        "surface-container-highest": "#e4e3d9",
-                        "on-error": "#ffffff",
-                        "on-background": "#1b1c16",
-                        "on-secondary-container": "#716061",
-                        "on-primary-fixed": "#001d35",
-                        "primary": "#32618f",
-                        "tertiary-fixed-dim": "#bec9c5",
-                        "surface-variant": "#e4e3d9",
-                        "secondary": "#6a5b5b",
-                        "surface-container-low": "#f6f4ea",
-                        "on-secondary-fixed-variant": "#524344",
-                        "primary-container": "#8dbaed",
-                        "surface-tint": "#32618f",
-                        "outline": "#727780",
-                        "primary-fixed-dim": "#9dcafe",
-                        "inverse-surface": "#30312a",
-                        "surface-dim": "#dcdad0",
-                        "primary-fixed": "#d0e4ff",
-                        "on-primary-fixed-variant": "#134976",
-                        "tertiary-fixed": "#dae5e0",
-                        "on-secondary": "#ffffff",
-                        "on-primary": "#ffffff",
-                        "surface-container-lowest": "#ffffff"
-                    },
-                    fontFamily: {
-                        "headline": ["Noto Serif"],
-                        "body": ["Manrope"],
-                        "label": ["Manrope"]
-                    },
-                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
-                },
-            },
-        }
-    </script>
-    <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-            vertical-align: middle;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        .hero-gradient {
-            background: linear-gradient(to bottom, rgba(27, 28, 22, 0.4) 0%, rgba(27, 28, 22, 0) 40%, rgba(27, 28, 22, 0.4) 100%);
-        }
-
-        body {
-            min-height: max(884px, 100dvh);
-        }
-
-        /* Essential Toast Styles (ported from existing style.css) */
-        .toast-container {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .toast {
-            background: var(--surface-container-lowest);
-            color: var(--on-surface);
-            padding: 1rem 2rem;
-            border-radius: 4px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            transform: translateX(120%);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            font-size: 0.9rem;
-            border-left: 4px solid var(--primary);
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
-        .toast.success {
-            border-left-color: #4CAF50;
-        }
-
-        .toast.error {
-            border-left-color: #f44336;
-        }
-
-        /* Mobile Nav Link Styles (for drawer) */
-        #nav-links.open {
-            transform: translateX(0);
-        }
-
-        .hidden {
-            display: none !important;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
 
-<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
-    <!-- TopAppBar -->
-    <header
-        class="fixed top-0 w-full z-50 bg-[#FCF9EF]/70 dark:bg-[#1B1C16]/70 backdrop-blur-xl border-b border-[#1B1C16]/10 dark:border-[#F0EEE4]/10 flex justify-between items-center px-6 h-16">
-        <div class="flex items-center gap-4">
-            <button id="nav-toggle"
-                class="text-[#1B1C16] dark:text-[#F0EEE4] hover:opacity-70 transition-opacity duration-300 active:scale-95 transition-transform">
-                <span class="material-symbols-outlined">menu</span>
-            </button>
-            <div class="hidden md:flex items-center gap-8 ml-8">
-                <a href="/" class="text-xs font-label uppercase tracking-widest hover:text-primary transition-colors">Home</a>
-                <a href="/catalog/" class="text-xs font-label uppercase tracking-widest hover:text-primary transition-colors">Shop</a>
-                <a href="/about/" class="text-xs font-label uppercase tracking-widest hover:text-primary transition-colors">Story</a>
-            </div>
-        </div>
-        <a href="/" class="text-2xl font-headline font-light tracking-tighter text-[#1B1C16] dark:text-[#F0EEE4] uppercase">
-            IRI COLLECTIONS
-        </a>
-        <div class="flex items-center gap-4">
-            <button class="text-[#1B1C16] dark:text-[#F0EEE4] hover:opacity-70 transition-opacity duration-300 active:scale-95 transition-transform">
-                <span class="material-symbols-outlined">search</span>
-            </button>
-            
-            <!-- Auth & User Links -->
-            <div id="auth-links" class="hidden md:block">
-                <a href="/login/" class="text-xs font-label uppercase tracking-widest hover:text-primary transition-colors">Login</a>
-            </div>
-            
-            <div id="user-menu" class="hidden flex items-center gap-4">
-                <a href="/orders/" class="text-xs font-label uppercase tracking-widest hover:text-primary transition-colors user-name">Account</a>
-                <a href="#" onclick="logout(); return false;" class="text-xs font-label uppercase tracking-widest hover:text-primary transition-colors">Logout</a>
-            </div>
+<body>
+    <!-- Mobile Menu Overlay -->
+    <div class="menu-overlay" id="menu-overlay"></div>
 
-            <a href="/cart/" class="text-[#1B1C16] dark:text-[#F0EEE4] hover:opacity-70 transition-opacity duration-300 relative group">
-                <span class="material-symbols-outlined">shopping_bag</span>
-                <span id="cart-count" class="absolute -top-1 -right-1 bg-primary text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
-            </a>
-            
-            <a id="admin-link" href="/admin-dashboard/" class="hidden text-primary hover:opacity-70">
-                <span class="material-symbols-outlined">dashboard</span>
-            </a>
-        </div>
-    </header>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">Iri <span>Collections</span></a>
 
-    <!-- Navigation Drawer (Mobile) -->
-    <div id="menu-overlay" class="fixed inset-0 bg-black/50 z-[60] hidden transition-opacity duration-300"></div>
-    <div id="nav-links" class="fixed top-0 left-0 h-full w-80 bg-background z-[70] -translate-x-full transition-transform duration-500 p-8 flex flex-col gap-8 shadow-2xl">
-        <div class="flex justify-between items-center mb-12">
-            <div class="text-xl font-headline font-light tracking-tighter uppercase">Iri</div>
-            <button onclick="document.getElementById('nav-toggle').click()">
-                <span class="material-symbols-outlined">close</span>
-            </button>
+            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">☰</button>
+
+            <ul class="nav-links" id="nav-links">
+                <li class="mobile-only" style="display: none; padding-bottom: var(--space-xl);"><a href="/" class="navbar-brand">Iri</a></li>
+                <li><a href="/">Home</a></li>
+                <li><a href="/catalog/">Shop</a></li>
+                <li id="auth-links"><a href="/login/">Login</a></li>
+                <li id="admin-link" class="hidden"><a href="/admin-dashboard/">Dashboard</a></li>
+                <li><a href="/cart/">Cart <span class="cart-badge" id="cart-count">0</span></a></li>
+                <li id="user-menu" class="nav-user-menu hidden">
+                    <a href="/orders/">My Orders</a>
+                    <a href="#" onclick="logout(); return false;">Logout</a>
+                </li>
+            </ul>
         </div>
-        <ul class="space-y-6">
-            <li><a href="/" class="text-lg font-headline font-light hover:text-primary">Home</a></li>
-            <li><a href="/catalog/" class="text-lg font-headline font-light hover:text-primary">Collections</a></li>
-            <li><a href="/catalog/?category=necklaces" class="text-sm font-label uppercase tracking-widest opacity-50 pl-4">Necklaces</a></li>
-            <li><a href="/catalog/?category=earrings" class="text-sm font-label uppercase tracking-widest opacity-50 pl-4">Earrings</a></li>
-            <li><a href="/about/" class="text-lg font-headline font-light hover:text-primary">Our Story</a></li>
-            <li><a href="/contact/" class="text-lg font-headline font-light hover:text-primary">Contact</a></li>
-        </ul>
-        <div class="mt-auto border-t border-outline-variant/10 pt-8 space-y-4">
-            <a href="/login/" class="text-xs font-label uppercase tracking-widest block py-2">Account</a>
-            <a href="/cart/" class="text-xs font-label uppercase tracking-widest block py-2">Bag</a>
-        </div>
-    </div>
+    </nav>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <main class="pt-0 min-h-screen">
-        {% block content %}{% endblock %}
-    </main>
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
 
     <!-- Footer -->
     {% block footer %}
-    <footer class="bg-surface pt-24 pb-32 px-6 border-t border-outline-variant/10">
-        <div class="max-w-screen-2xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16 md:gap-8 text-center md:text-left">
-            <div class="md:col-span-1">
-                <h1 class="text-xl font-headline font-light tracking-tighter text-on-surface uppercase mb-8">
-                    IRI COLLECTIONS
-                </h1>
-                <p class="text-on-surface/60 text-sm font-light leading-relaxed max-w-xs mx-auto md:mx-0">
-                    Crafting ethereal light into timeless treasures. Each piece is an artisanal manifestation of light and elegance.
-                </p>
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <div class="footer-brand">Iri Collections</div>
+                    <p>Exquisite jewelry for every occasion. Each piece tells a story of artisanal excellence and
+                        timeless beauty.</p>
+                </div>
+                <div>
+                    <h4>Shop</h4>
+                    <ul class="footer-links">
+                        <li><a href="/catalog/?category=necklaces">Necklaces</a></li>
+                        <li><a href="/catalog/?category=earrings">Earrings</a></li>
+                        <li><a href="/catalog/?category=bracelets">Bracelets</a></li>
+                        <li><a href="/catalog/?category=rings">Rings</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Help</h4>
+                    <ul class="footer-links">
+                        <li><a href="/shipping/">Shipping Policy</a></li>
+                        <li><a href="/returns/">Returns</a></li>
+                        <li><a href="/contact/">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="/about/">About Us</a></li>
+                    </ul>
+                </div>
             </div>
-            <div class="flex flex-col gap-6">
-                <h4 class="font-label text-[10px] tracking-[0.2em] uppercase font-bold text-on-surface">Categories</h4>
-                <ul class="flex flex-col gap-4">
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/catalog/?category=necklaces">Necklaces</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/catalog/?category=earrings">Earrings</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/catalog/?category=bracelets">Bracelets</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/catalog/?category=rings">Rings</a></li>
-                </ul>
-            </div>
-            <div class="flex flex-col gap-6">
-                <h4 class="font-label text-[10px] tracking-[0.2em] uppercase font-bold text-on-surface">Support</h4>
-                <ul class="flex flex-col gap-4">
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/contact/">Contact Us</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/shipping/">Shipping Policy</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/returns/">Returns & Exchanges</a></li>
-                </ul>
-            </div>
-            <div class="flex flex-col gap-6">
-                <h4 class="font-label text-[10px] tracking-[0.2em] uppercase font-bold text-on-surface">Explore</h4>
-                <ul class="flex flex-col gap-4">
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="/about/">Our Story</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="#">Sustainability</a></li>
-                    <li><a class="text-on-surface/60 text-sm font-light hover:text-primary transition-colors" href="#">Careers</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="max-w-screen-2xl mx-auto mt-24 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p class="text-on-surface/40 text-[10px] tracking-widest uppercase">© 2026 IRI COLLECTIONS. ALL RIGHTS RESERVED.</p>
-            <div class="flex gap-8 text-on-surface/40">
-                <span class="material-symbols-outlined text-xl cursor-not-allowed">public</span>
-                <span class="material-symbols-outlined text-xl cursor-not-allowed">share</span>
-                <span class="material-symbols-outlined text-xl cursor-not-allowed">policy</span>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Iri Collections. All rights reserved.</p>
             </div>
         </div>
     </footer>
     {% endblock %}
-
-    <!-- BottomNavBar (Mobile Only) -->
-    <nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center h-20 px-8 pb-safe bg-[#FCF9EF]/80 dark:bg-[#1B1C16]/80 backdrop-blur-xl z-50 shadow-[0_-4px_40px_rgba(27,28,22,0.06)] rounded-t-sm">
-        <a class="flex flex-col items-center justify-center text-primary" href="/">
-            <span class="material-symbols-outlined">home</span>
-            <span class="text-[8px] font-label uppercase tracking-widest mt-1">Home</span>
-        </a>
-        <a class="flex flex-col items-center justify-center text-[#1B1C16]/50" href="/catalog/">
-            <span class="material-symbols-outlined">diamond</span>
-            <span class="text-[8px] font-label uppercase tracking-widest mt-1">Shop</span>
-        </a>
-        <a class="flex flex-col items-center justify-center text-[#1B1C16]/50" href="/orders/">
-            <span class="material-symbols-outlined">history</span>
-            <span class="text-[8px] font-label uppercase tracking-widest mt-1">Orders</span>
-        </a>
-        <a class="flex flex-col items-center justify-center text-[#1B1C16]/50" href="/cart/">
-            <span class="material-symbols-outlined">shopping_bag</span>
-            <span class="text-[8px] font-label uppercase tracking-widest mt-1">Bag</span>
-        </a>
-    </nav>
 
     <script src="{% static 'js/app.js' %}"></script>
     {% block extra_js %}{% endblock %}

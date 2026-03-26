@@ -5,150 +5,105 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="relative h-screen w-full overflow-hidden">
-    <div class="absolute inset-0">
-        <img class="w-full h-full object-cover" 
-             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeYsH6YeFalWvjtn9UcoMPr72_LUTexh_YgPmeoz-mD1N4fewoDQr3fgiEIfTLFhftDZ0QH8vHg0-BEYvEYGFu9BEI63m2JoGqWJp1reTt6BTaNwAokQPo7-b5YmL_IGDa3Yn3pO500kFHrZsjL1SpKlLYxbTK9nDnsG7hNk28vORj2JHDa7Aldn-rTusypNEpOtKZbGgmhPgZ_ERmJ9NdhJ2cYxxZMvY3dDtQAKzh2oTcciJ5y_1-pb1OGI9AWYIVTNDjLH9u05ou" 
-             alt="Close-up of high-end diamond jewelry">
-        <div class="absolute inset-0 hero-gradient"></div>
-    </div>
-    <div class="relative h-full flex flex-col items-center justify-end pb-32 px-6 text-center">
-        <h2 class="font-headline text-5xl md:text-7xl lg:text-8xl text-surface-container-lowest mb-8 tracking-tighter leading-none max-w-4xl">
-            The Radiance of Ether
-        </h2>
-        <a href="/catalog/" class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-10 py-4 text-xs tracking-[0.2em] uppercase font-label rounded-sm shadow-xl active:scale-95 transition-all duration-300">
-            Explore Collection
-        </a>
-    </div>
-</section>
-
-<!-- Featured Categories: Asymmetric Bento Grid -->
-<section class="py-28 px-6 max-w-screen-2xl mx-auto">
-    <div class="flex flex-col md:flex-row justify-between items-baseline mb-12">
-        <h2 class="font-headline text-4xl text-on-surface uppercase tracking-tight">Curation</h2>
-        <p class="text-[10px] font-label uppercase tracking-[0.4em] opacity-50 mt-4 md:mt-0">Refractive Elegance</p>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 h-auto md:h-[800px]" id="categories-grid">
-        <!-- Static placeholders updated by AJAX below -->
-        <div class="md:col-span-8 animate-pulse bg-surface-container-low h-[400px]"></div>
-        <div class="md:col-span-4 animate-pulse bg-secondary-container h-[400px]"></div>
-    </div>
-</section>
-
-<!-- The Icons: Featured Products Horizontal Scroll -->
-<section class="bg-surface-container-low py-28">
-    <div class="max-w-screen-2xl mx-auto px-6 mb-12 flex justify-between items-end">
-        <div>
-            <span class="text-primary font-label text-[10px] tracking-[0.3em] uppercase mb-4 block">Selection</span>
-            <h2 class="font-headline text-4xl text-on-surface">The Icons</h2>
+<section class="hero">
+    <div class="hero-shader"></div>
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-badge">✨ New Collection 2026</div>
+            <h1 class="hero-title">
+                <span class="thin">This is</span>
+                <span class="bold">Iri Collections</span>
+                <span class="italic-thin">Shop our Collections here</span>
+            </h1>
+            <p>Discover our curated collection of jewelry — from exquisite gold necklaces to dazzling trendy earrings.
+            </p>
+            <div class="hero-buttons">
+                <a href="/catalog/" class="btn btn-premium">Explore Collection</a>
+                <a href="/catalog/?featured=true" class="btn btn-outline-gold">Featured Pieces</a>
+            </div>
         </div>
-        <div class="hidden md:flex gap-4">
-            <button onclick="document.getElementById('featured-products-scroll').scrollBy({left: -400, behavior: 'smooth'})" 
-                    class="w-12 h-12 rounded-full border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container transition-colors">
-                <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <button onclick="document.getElementById('featured-products-scroll').scrollBy({left: 400, behavior: 'smooth'})"
-                    class="w-12 h-12 rounded-full border border-outline-variant/30 flex items-center justify-center hover:bg-surface-container transition-colors">
-                <span class="material-symbols-outlined">chevron_right</span>
-            </button>
+        <div class="hero-image-premium">
+        </div>
+</section>
+
+
+<!-- Featured Products -->
+<section class="section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Featured <span class="text-gold">Pieces</span></h2>
+            <div class="section-divider"></div>
+        </div>
+        <div class="grid-products" id="featured-products">
+            <!-- Populated by JS -->
+            <div class="page-loader">
+                <div class="spinner"></div>
+            </div>
+        </div>
+        <div class="text-center mt-2">
+            <a href="/catalog/" class="btn btn-secondary">View All Products</a>
         </div>
     </div>
-    <div id="featured-products-scroll" class="flex overflow-x-auto no-scrollbar gap-8 px-6 md:px-24">
-        <!-- Products populated by JS -->
-        <div class="w-full text-center py-20 opacity-30 italic">Loading our finest pieces...</div>
+</section>
+
+<!-- Categories Section -->
+<section class="section" style="background: var(--bg-secondary);">
+    <div class="container">
+        <div class="section-header">
+            <h2>Shop by <span class="text-gold">Category</span></h2>
+            <div class="section-divider"></div>
+        </div>
+        <div class="grid-products" id="categories-grid">
+            <!-- Populated by JS -->
+        </div>
     </div>
 </section>
 
-<!-- Newsletter Section -->
-<section class="py-32 px-6 flex flex-col items-center justify-center bg-surface-container-highest">
-    <div class="max-w-2xl w-full text-center">
-        <span class="text-primary font-label text-[10px] tracking-[0.4em] uppercase mb-6 block">Join the Ether</span>
-        <h2 class="font-headline text-4xl md:text-5xl text-on-surface mb-10 leading-tight">
-            Be the first to see our newest creations and exclusive collections.
-        </h2>
-        <form class="flex flex-col md:flex-row gap-0 w-full border-b border-on-surface/20">
-            <input class="flex-grow bg-transparent border-none py-6 text-xs font-label tracking-widest focus:ring-0 placeholder:text-on-surface/40" 
-                   placeholder="YOUR EMAIL ADDRESS" type="email" required />
-            <button class="py-6 px-10 text-xs font-label tracking-[0.2em] uppercase text-primary font-bold hover:opacity-70 transition-opacity" type="submit">
-                Subscribe
-            </button>
-        </form>
-    </div>
-</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
-        // Updated featured product card for horizontal scroll
-        function featuredProductCard(p) {
-            const imgSrc = p.display_image || p.image_url || p.image || '';
-            const price = formatPrice(p.price);
-            return `
-                <div class="min-w-[320px] md:min-w-[400px] group flex flex-col cursor-pointer" onclick="window.location.href='/product/${p.slug}/'">
-                    <div class="aspect-[4/5] bg-surface-container-lowest mb-6 overflow-hidden relative">
-                        <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                             data-src="${imgSrc}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500'%3E%3Crect fill='%23eae8de' width='400' height='500'/%3E%3C/svg%3E">
-                        <div class="absolute top-4 right-4 text-on-surface/40 hover:text-error transition-colors">
-                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">favorite</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h4 class="font-headline text-lg text-on-surface mb-1">${escapeHTML(p.name)}</h4>
-                            <p class="text-on-surface/60 font-label text-[10px] tracking-widest uppercase">${escapeHTML(p.category_name || 'Jewelry')}</p>
-                        </div>
-                        <span class="text-primary font-medium">${price}</span>
-                    </div>
-                </div>
-            `;
-        }
-
         // Load featured products
         try {
             const data = await API.get('/store/products/?featured=true');
-            const container = document.getElementById('featured-products-scroll');
+            const container = document.getElementById('featured-products');
             if (data && data.results && data.results.length > 0) {
-                container.innerHTML = data.results.map(p => featuredProductCard(p)).join('');
+                container.innerHTML = data.results.map(p => productCardHTML(p)).join('');
                 initLazyLoading();
             } else {
+                // Fallback: load all products  
                 const allData = await API.get('/store/products/');
                 if (allData && allData.results) {
-                    container.innerHTML = allData.results.slice(0, 6).map(p => featuredProductCard(p)).join('');
+                    container.innerHTML = allData.results.slice(0, 4).map(p => productCardHTML(p)).join('');
                     initLazyLoading();
                 }
             }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error('Failed to load products:', err);
+        }
 
-        // Load categories into Bento Grid
+        // Load categories
         try {
             const cats = await API.get('/store/categories/');
             const catGrid = document.getElementById('categories-grid');
             if (cats && cats.length > 0) {
-                const colors = ['bg-surface-container-low', 'bg-secondary-container', 'bg-surface-container-high', 'bg-surface-container-highest'];
-                const images = [
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBNMLvwZ97MhS061odCxab2HtrepDmh9yb4hWF0KLuCCqtwJz_UqScGuNnRzei5Y7Uwk2tsuVhyDGFWYttY-ugpuhFt6-fUpyNm6Lo_nP0B5dzUYR7UcJdQrxJPLa5r2wfy4bLJDiNyyWt_V1EgfauTL7_VgP8ZDkr7NYyyx8uep77G1at7llSMG9RP9P6jxlYnLcqN7o3DaSW9ZBh03cK4NXJxJol39td1CnAuPE_O9FmbNENE4bVW0ZulhcLd8uy4h32sVN4yau86',
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuCLIP0xdJdK9AAgliqTPcwh0OTEUMwuyqVL7CijSi23dZMOL39g9CISdVRcOxi8KxGb7P7sBZce1PswPyOKjudsLTsnw67rQYW6EWQaBX8KzjH3W_Sncfwb3137p0JnQQpOR8GyaRP5py0IS1QfDVdhc9Lchu402Ftd0yHmLirRZpwKZoXfVNgS4bdN_-WzGOF47ferJLJMocjXPVOsYG7qJFNsXWmXPC4op-wnx8Fec01yIRlQfY4sjQcuCabtcGVwEHZoiJPhXyBw',
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBv_zHVhogqsg2aXq-3SbTZNBbYb0_8sQeErG9b9sD32-mk1OaPDOrAENYz2_wKZsm9miIW99UQO9EQGJgYsIznYST-9oWiJjviOfr_jctehudIVEZNtg3Cmsuo51f7wEPixs7ws1mRwNd_UoPaebV1dadx4K-s0xyOunBouy9EiZpvUfvWfCJz6Tqv4B_WmavhLvYLI0dootgNk8ZXdra-dVB-IZJAZhSLizY0M2TDwV_vvAVitMZDiqmaIdgYGf--_W70o3UaLjrD',
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuAowY6Pro6QjC2BHCiFFAbiRE2wxXOT7snJpcl1xcAwfDcn0Q8_YEuwj8iV7wCC-jmdD7Yc6QJMmTvn7MoWjhDlsbDqYVR-2yZlhlhli39NGUwR_bL37I47zBbu09AIuU7YfW2Nq2LL9uJhHXDHWlpgVdbRGR4Q6XVWivXtFtTF0Om72h4QBjxvD2vIwM4z68ZMIgAw8Wuh5ZpIQ5emhsIUFCqtqZ2TsBU92utEMCayutoJ77S5rRObbRfP8jy8VKiSr5hC4-lvfLgR'
-                ];
-                
-                catGrid.innerHTML = cats.slice(0, 4).map((cat, i) => {
-                    const span = i === 0 || i === 3 ? 'md:col-span-8' : 'md:col-span-4';
-                    return `
-                        <a href="/catalog/?category=${cat.slug}" class="${span} group relative overflow-hidden ${colors[i % 4]} min-h-[300px]">
-                            <img class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                                 src="${images[i % 4]}" alt="${cat.name}">
-                            <div class="absolute inset-0 bg-on-surface/5 flex flex-col justify-end p-10">
-                                <span class="text-on-surface font-label text-[10px] tracking-[0.3em] uppercase mb-2">Category</span>
-                                <h3 class="font-headline text-3xl text-on-surface uppercase tracking-tight">${cat.name}</h3>
-                                <p class="text-[10px] font-label uppercase tracking-widest opacity-60 mt-2">${cat.product_count} items</p>
-                            </div>
-                        </a>
-                    `;
-                }).join('');
+                catGrid.innerHTML = cats.map(cat => `
+                <a href="/catalog/?category=${cat.slug}" class="card feature-card" style="cursor:pointer; text-decoration:none;">
+                    <div class="feature-icon">
+                        ${{
+                        'Necklaces': '📿', 'Earrings': '✨', 'Bracelets': '💫',
+                        'Rings': '💍', 'Anklets': '🦶'
+                    }[cat.name] || '💎'}
+                    </div>
+                    <h3>${cat.name}</h3>
+                    <p>${cat.product_count} pieces</p>
+                </a>
+            `).join('');
             }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error('Failed to load categories:', err);
+        }
     });
 </script>
 {% endblock %}
