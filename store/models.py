@@ -38,7 +38,7 @@ class Product(models.Model):
         Category, on_delete=models.PROTECT, related_name="products"
     )
     image = models.ImageField(upload_to="products/", blank=True, null=True)
-    image_url = models.URLField(blank=True)
+    image_url = models.TextField(blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
     is_featured = models.BooleanField(default=False, db_index=True)
     material = models.CharField(max_length=100, blank=True)

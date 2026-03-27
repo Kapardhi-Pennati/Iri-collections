@@ -427,7 +427,9 @@ function openProductModal(product = null) {
     openModal('product-modal');
 }
 
-// Image preview logic
+// Image preview logic — stores base64 for later submission
+let pendingImageBase64 = null;
+
 document.getElementById('pf-image-file').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const preview = document.getElementById('pf-image-preview');
@@ -435,11 +437,13 @@ document.getElementById('pf-image-file').addEventListener('change', function(e) 
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            img.src = e.target.result;
+            pendingImageBase64 = e.target.result; // store the base64 data URL
+            img.src = pendingImageBase64;
             preview.style.display = 'block';
         };
         reader.readAsDataURL(file);
     } else {
+        pendingImageBase64 = null;
         preview.style.display = 'none';
     }
 });
@@ -451,47 +455,44 @@ document.getElementById('product-form').addEventListener('submit', async (e) => 
     btn.disabled = true;
     btn.textContent = 'Saving...';
 
-    const formData = new FormData();
-    formData.append('name', document.getElementById('pf-name').value);
-    formData.append('description', document.getElementById('pf-desc').value);
-    formData.append('price', document.getElementById('pf-price').value);
+    // Build JSON payload (no FormData / no file upload — works on Vercel)
+    const payload = {
+        name: document.getElementById('pf-name').value,
+        description: document.getElementById('pf-desc').value,
+        price: document.getElementById('pf-price').value,
+        stock: document.getElementById('pf-stock').value,
+        category: document.getElementById('pf-category').value,
+        material: document.getElementById('pf-material').value,
+        weight: document.getElementById('pf-weight').value,
+        is_active: document.getElementById('pf-active').checked,
+        is_featured: document.getElementById('pf-featured').checked,
+    };
+
     const comparePrice = document.getElementById('pf-compare').value;
-    if (comparePrice) formData.append('compare_price', comparePrice);
-    formData.append('stock', document.getElementById('pf-stock').value);
-    formData.append('category', document.getElementById('pf-category').value);
-    formData.append('material', document.getElementById('pf-material').value);
-    formData.append('weight', document.getElementById('pf-weight').value);
-    formData.append('is_active', document.getElementById('pf-active').checked);
-    formData.append('is_featured', document.getElementById('pf-featured').checked);
+    if (comparePrice) payload.compare_price = comparePrice;
 
-    const imageUrl = document.getElementById('pf-image').value;
-    if (imageUrl) formData.append('image_url', imageUrl);
-
-    const fileInput = document.getElementById('pf-image-file');
-    if (fileInput.files[0]) {
-        formData.append('image', fileInput.files[0]);
+    // Image priority: uploaded file (as base64) > typed URL > keep existing
+    if (pendingImageBase64) {
+        payload.image_url = pendingImageBase64;
+    } else {
+        const imageUrl = document.getElementById('pf-image').value;
+        if (imageUrl) payload.image_url = imageUrl;
     }
 
     let res;
     if (editId) {
-        res = await API.request(`/store/admin/products/${editId}/`, {
-            method: 'PUT',
-            body: formData
-        });
+        res = await API.patch(`/store/admin/products/${editId}/`, payload);
     } else {
-        res = await API.request('/store/admin/products/', {
-            method: 'POST',
-            body: formData
-        });
+        res = await API.post('/store/admin/products/', payload);
     }
 
     if (res && res.ok) {
         Toast.success(editId ? 'Product updated!' : 'Product created!');
         closeModal('product-modal');
         loadAdminProducts();
+        pendingImageBase64 = null; // reset
     } else {
-        const errData = await res?.json();
-        Toast.error(JSON.stringify(errData) || 'Failed to save product.');
+        Toast.error(JSON.stringify(res?.data) || 'Failed to save product.');
     }
     btn.disabled = false;
     btn.textContent = 'Save Product';
