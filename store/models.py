@@ -269,3 +269,26 @@ class Wishlist(models.Model):
 
     def __str__(self):
         return f"Wishlist of {self.user.email}"
+
+
+class PageView(models.Model):
+    """Tracks page visits for website traffic analytics."""
+    path = models.CharField(max_length=500)
+    session_key = models.CharField(max_length=100, blank=True, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="page_views",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "page_views"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.path} @ {self.created_at:%Y-%m-%d %H:%M}"

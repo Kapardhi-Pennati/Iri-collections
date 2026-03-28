@@ -13,12 +13,12 @@
         </div>
 
         <!-- Filters Bar -->
-        <div style="display:flex; gap:var(--space-md); flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:var(--space-xl);">
+        <div class="catalog-filters-row" style="display:flex; gap:var(--space-md); flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:var(--space-xl);">
             <div class="categories-bar" id="category-filters" style="margin-bottom:0;">
                 <button class="category-chip active" data-category="">All</button>
                 <!-- Populated by JS -->
             </div>
-            <div style="display:flex; gap:var(--space-md); align-items:center;">
+            <div class="catalog-search-sort" style="display:flex; gap:var(--space-md); align-items:center;">
                 <input type="text" id="search-input" placeholder="Search jewelry..." style="width:220px;">
                 <select id="sort-select" style="width:180px;">
                     <option value="">Sort by</option>
@@ -28,6 +28,7 @@
                 </select>
             </div>
         </div>
+
 
         <!-- Products Grid -->
         <div class="grid-products" id="products-grid">

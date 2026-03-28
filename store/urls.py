@@ -47,6 +47,10 @@ urlpatterns = [
     path(
         "admin/analytics/", views.AdminAnalyticsView.as_view(), name="admin-analytics"
     ),
+    path(
+        "admin/traffic/", views.AdminTrafficView.as_view(), name="admin-traffic"
+    ),
     # Router
     path("", include(router.urls)),
 ]
+

@@ -601,16 +601,162 @@ class AdminAnalyticsView(APIView):
     def get(self, request):
         now = timezone.now()
         thirty_days_ago = now - timedelta(days=30)
-        total_revenue = Order.objects.filter(status__in=["confirmed", "shipped", "delivered"]).aggregate(total=Sum("total_amount"))["total"] or 0
+
+        # ── Stat card numbers ──────────────────────────────────────
+        total_revenue = (
+            Order.objects.filter(status__in=["confirmed", "shipped", "delivered"])
+            .aggregate(total=Sum("total_amount"))["total"] or 0
+        )
         total_orders = Order.objects.count()
         pending_orders = Order.objects.filter(status="pending").count()
         total_products = Product.objects.filter(is_active=True).count()
         low_stock = Product.objects.filter(stock__lte=5, is_active=True).count()
 
-        return Response({
-            "total_revenue": float(total_revenue),
-            "total_orders": total_orders,
-            "pending_orders": pending_orders,
-            "total_products": total_products,
-            "low_stock_products": low_stock,
-        })
+        # ── Daily revenue (last 30 days) ───────────────────────────
+        daily_revenue_qs = (
+            Order.objects.filter(
+                status__in=["confirmed", "shipped", "delivered"],
+                created_at__gte=thirty_days_ago,
+            )
+            .annotate(date=TruncDate("created_at"))
+            .values("date")
+            .annotate(revenue=Sum("total_amount"))
+            .order_by("date")
+        )
+        daily_revenue = [
+            {"date": str(r["date"]), "revenue": float(r["revenue"] or 0)}
+            for r in daily_revenue_qs
+        ]
+
+        # ── Status breakdown ───────────────────────────────────────
+        status_qs = (
+            Order.objects.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        status_breakdown = [
+            {"status": s["status"], "count": s["count"]} for s in status_qs
+        ]
+
+        # ── Top products ───────────────────────────────────────────
+        top_products_qs = (
+            OrderItem.objects.filter(
+                order__status__in=["confirmed", "shipped", "delivered"]
+            )
+            .values("product_name")
+            .annotate(
+                total_sold=Sum("quantity"),
+                total_revenue=Sum(F("quantity") * F("price_at_purchase")),
+            )
+            .order_by("-total_revenue")[:5]
+        )
+        top_products = [
+            {
+                "product_name": p["product_name"],
+                "total_sold": p["total_sold"],
+                "total_revenue": float(p["total_revenue"] or 0),
+            }
+            for p in top_products_qs
+        ]
+
+        return Response(
+            {
+                "total_revenue": float(total_revenue),
+                "total_orders": total_orders,
+                "pending_orders": pending_orders,
+                "total_products": total_products,
+                "low_stock_products": low_stock,
+                "daily_revenue": daily_revenue,
+                "status_breakdown": status_breakdown,
+                "top_products": top_products,
+            }
+        )
+
+
+class AdminTrafficView(APIView):
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        from .models import PageView
+
+        now = timezone.now()
+        thirty_days_ago = now - timedelta(days=30)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        qs_30d = PageView.objects.filter(created_at__gte=thirty_days_ago)
+
+        total_views = qs_30d.count()
+        unique_visitors = qs_30d.values("session_key").exclude(session_key="").distinct().count()
+        today_views = PageView.objects.filter(created_at__gte=today_start).count()
+
+        # Daily breakdown
+        daily_qs = (
+            qs_30d.annotate(date=TruncDate("created_at"))
+            .values("date")
+            .annotate(
+                views=Count("id"),
+                unique=Count("session_key", distinct=True),
+            )
+            .order_by("date")
+        )
+        daily_views = [
+            {
+                "date": str(d["date"]),
+                "views": d["views"],
+                "unique": d["unique"],
+            }
+            for d in daily_qs
+        ]
+
+        # Top pages
+        top_pages_qs = (
+            qs_30d.values("path")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:10]
+        )
+        top_pages = [{"path": p["path"], "count": p["count"]} for p in top_pages_qs]
+
+        # Device breakdown via user agent sniffing
+        mobile_keywords = ["mobile", "android", "iphone", "ipad", "ipod", "blackberry", "windows phone"]
+        tablet_keywords = ["ipad", "tablet", "kindle", "playbook"]
+
+        mobile_count = 0
+        tablet_count = 0
+        desktop_count = 0
+
+        agents = qs_30d.values_list("user_agent", flat=True)
+        for ua in agents:
+            ua_lower = ua.lower()
+            if any(kw in ua_lower for kw in tablet_keywords):
+                tablet_count += 1
+            elif any(kw in ua_lower for kw in mobile_keywords):
+                mobile_count += 1
+            else:
+                desktop_count += 1
+
+        # Top page for today
+        top_today = (
+            PageView.objects.filter(created_at__gte=today_start)
+            .values("path")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+            .first()
+        )
+        top_page_today = top_today["path"] if top_today else "—"
+
+        return Response(
+            {
+                "total_views": total_views,
+                "unique_visitors": unique_visitors,
+                "today_views": today_views,
+                "top_page": top_page_today,
+                "daily_views": daily_views,
+                "top_pages": top_pages,
+                "device_breakdown": {
+                    "mobile": mobile_count,
+                    "desktop": desktop_count,
+                    "tablet": tablet_count,
+                },
+            }
+        )
+

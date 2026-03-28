@@ -73,11 +73,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",  # ✅ Clickjacking protection
-    # Future: Add custom middleware for:
-    # - Rate limiting on specific paths
-    # - Custom security headers
-    # - Audit logging on sensitive operations
+    # Traffic tracking (must be after AuthenticationMiddleware)
+    "store.traffic_middleware.TrafficMiddleware",
 ]
+
 
 ROOT_URLCONF = "ecommerce.urls"
 
