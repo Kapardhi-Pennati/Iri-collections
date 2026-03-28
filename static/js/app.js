@@ -197,8 +197,11 @@ function updateNavbar() {
         authLinks.classList.add('hidden');
         if (userMenu) {
             userMenu.classList.remove('hidden');
-            const nameEl = userMenu.querySelector('.user-name');
-            if (nameEl) nameEl.textContent = user?.full_name || user?.email || 'Account';
+            const nameEl = userMenu.querySelector('.user-name-trigger');
+            if (nameEl) {
+                const firstName = user?.full_name ? user.full_name.split(' ')[0] : (user?.username || 'Account');
+                nameEl.textContent = `${firstName} ▾`;
+            }
         }
         if (adminLink && API.isAdmin()) {
             adminLink.classList.remove('hidden');
@@ -213,6 +216,16 @@ function updateNavbar() {
         if (wishlistLink) wishlistLink.classList.add('hidden');
         if (cartCount) cartCount.textContent = '0';
     }
+    
+    // Set active link based on current path
+    const currentPath = window.location.pathname;
+    document.querySelectorAll('.nav-links a').forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+            link.parentElement.classList.add('active');
+        } else {
+            link.parentElement.classList.remove('active');
+        }
+    });
 }
 
 function updateWishlistBadge() {
@@ -362,16 +375,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadWishlistItems();
     initLazyLoading();
 
-    // Mobile nav toggle
+    const navbar = document.getElementById('navbar');
     const toggle = document.getElementById('nav-toggle');
     const links = document.getElementById('nav-links');
     const overlay = document.getElementById('menu-overlay');
+    const userTrigger = document.querySelector('.user-name-trigger');
+    const userMenu = document.getElementById('user-menu');
 
+    // Scroll Effect
+    const handleScroll = () => {
+        if (window.scrollY > 20) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    };
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check once on load
+
+    // Mobile Menu Toggle
     if (toggle && links && overlay) {
         const toggleMenu = () => {
-            links.classList.toggle('open');
+            const isOpen = links.classList.toggle('open');
+            toggle.classList.toggle('open');
             overlay.classList.toggle('active');
-            document.body.style.overflow = links.classList.contains('open') ? 'hidden' : '';
+            document.body.style.overflow = isOpen ? 'hidden' : '';
         };
 
         toggle.addEventListener('click', (e) => {
@@ -381,9 +409,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         overlay.addEventListener('click', toggleMenu);
 
+        // Mobile User Dropdown Toggle
+        if (userTrigger) {
+            userTrigger.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768) {
+                    e.preventDefault();
+                    userMenu.classList.toggle('active');
+                }
+            });
+        }
+
         // Close on link click
         links.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
+            link.addEventListener('click', (e) => {
+                if (link.classList.contains('user-name-trigger')) return;
                 if (links.classList.contains('open')) toggleMenu();
             });
         });
