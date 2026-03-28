@@ -31,6 +31,7 @@ urlpatterns = [
         name="product-page",
     ),
     path("cart/", TemplateView.as_view(template_name="cart.html"), name="cart-page"),
+    path("wishlist/", TemplateView.as_view(template_name="wishlist.html"), name="wishlist-page"),
     path(
         "checkout/",
         TemplateView.as_view(template_name="checkout.html"),
